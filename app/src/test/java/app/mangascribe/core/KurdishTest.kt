@@ -148,7 +148,8 @@ class KurdishEngineTest {
         val instruction = ChatPrompt.languageInstruction(Languages.of("ckb"))
         assertTrue(instruction.contains("Sorani"))
         assertTrue(instruction.contains("پ ژ گ چ"))
-        assertTrue(instruction.contains("never"), "the prompt must rule out Kurmanji")
+        // the prompt must rule out Kurmanji explicitly
+        assertTrue(instruction.contains("never"))
     }
 
     @Test

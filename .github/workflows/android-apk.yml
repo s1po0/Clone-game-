@@ -42,6 +42,11 @@ jobs:
           key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle.kts', 'gradle/wrapper/gradle-wrapper.properties') }}
           restore-keys: gradle-${{ runner.os }}-
 
+      # Compile before testing: a Kotlin error is reported as a compiler message
+      # (which GitHub surfaces as an annotation) rather than a bare test failure.
+      - name: Compile Kotlin
+        run: ./gradlew :app:compileDebugKotlin --no-daemon --stacktrace
+
       - name: Unit tests
         run: ./gradlew :app:testDebugUnitTest --no-daemon --stacktrace
 
