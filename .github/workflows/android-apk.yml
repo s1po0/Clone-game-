@@ -42,10 +42,23 @@ jobs:
           key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle.kts', 'gradle/wrapper/gradle-wrapper.properties') }}
           restore-keys: gradle-${{ runner.os }}-
 
-      # Compile before testing: a Kotlin error is reported as a compiler message
-      # (which GitHub surfaces as an annotation) rather than a bare test failure.
+      # Compile before testing, keeping the output: a Kotlin error is a compiler message, and
+      # `diagnostics.txt` below is what a person (or an agent without log access) reads.
       - name: Compile Kotlin
-        run: ./gradlew :app:compileDebugKotlin --no-daemon --stacktrace
+        run: ./gradlew :app:compileDebugKotlin --no-daemon --stacktrace 2>&1 | tee build-compile.log
+
+      - name: Diagnostics
+        if: always()
+        run: |
+          mkdir -p out
+          {
+            echo "== exit summary =="
+            grep -E "^(e:|w: .*(deprecat|unused))|error:|FAILURE:|What went wrong|Caused by:"               build-compile.log | head -120 || true
+            echo
+            echo "== last 80 lines =="
+            tail -80 build-compile.log || true
+          } > out/diagnostics.txt
+          wc -l out/diagnostics.txt
 
       - name: Unit tests
         run: ./gradlew :app:testDebugUnitTest --no-daemon --stacktrace
@@ -69,6 +82,14 @@ jobs:
           name: mangascribe-debug-apk
           path: out/*.apk
           if-no-files-found: warn
+
+      - name: Upload diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-diagnostics
+          path: out/diagnostics.txt
+          if-no-files-found: ignore
 
       - name: Upload test report
         if: failure()
