@@ -34,7 +34,10 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
+import app.mangascribe.core.Languages
 import app.mangascribe.core.Measurer
+import app.mangascribe.core.RtlTypeset
+import app.mangascribe.core.Script
 import app.mangascribe.core.TextFitter
 import app.mangascribe.data.AppSettings
 import app.mangascribe.data.Balloon
@@ -58,6 +61,8 @@ fun TranslatedPage(
     showOriginal: Boolean = false,
     onBalloonTap: ((Balloon) -> Unit)? = null,
 ) {
+    // Right-to-left targets (Kurdish, Arabic, Persian) draw through the RTL path.
+    val rtl = Languages.of(settings.targetLanguage).rtl
     var pageSize by remember(imagePath) { mutableStateOf(0 to 0) }
     var revealed by remember(imagePath) { mutableStateOf<Set<Int>>(emptySet()) }
     var scale by remember(imagePath) { mutableStateOf(1f) }
@@ -124,6 +129,7 @@ fun TranslatedPage(
                     settings = settings,
                     showOriginal = showOriginal,
                     revealed = revealed,
+                    rightToLeft = rtl,
                 )
             }
         }
@@ -170,6 +176,46 @@ fun hitTest(
     return best
 }
 
+/**
+ * Kurdish/Arabic/Persian ink for one balloon: right-aligned lines, wrap points the Arabic
+ * shaper accepts, kashida on a short single line. Kept beside the Latin path so the two can
+ * be compared line for line.
+ */
+private fun DrawScope.drawRtlBalloonText(
+    paint: Paint,
+    measurer: Measurer,
+    text: String,
+    left: Float,
+    top: Float,
+    right: Float,
+    bottom: Float,
+    boxW: Float,
+    boxH: Float,
+    seed: Float,
+    settings: AppSettings,
+) {
+    val clean = RtlTypeset.normalisePunctuation(text)
+    var size = max(8f, seed)
+    var lines = RtlTypeset.wrap(clean, boxW, size, measurer)
+    var guard = 0
+    while (guard++ < 24 && lines.size * measurer.lineHeight(size) > boxH && size > 7f) {
+        size = (size * 0.92f).coerceAtLeast(7f)
+        lines = RtlTypeset.wrap(clean, boxW, size, measurer)
+    }
+    paint.textSize = size
+    paint.textAlign = Paint.Align.RIGHT
+    val lineHeight = measurer.lineHeight(size)
+    var y = (top + bottom) / 2f - (lines.size * lineHeight) / 2f + lineHeight * 0.78f
+    // right edge of the padded text box, not of the mask
+    val pad = max(1.5f, min(right - left, bottom - top) * 0.10f)
+    val edge = right - pad / 2f
+    for (line in lines) {
+        drawContext.canvas.nativeCanvas.drawText(line, edge, y, paint)
+        y += lineHeight
+    }
+    paint.textAlign = Paint.Align.CENTER
+}
+
 private fun DrawScope.drawTranslatedBalloons(
     balloons: List<Balloon>,
     box: Rect,
@@ -177,6 +223,7 @@ private fun DrawScope.drawTranslatedBalloons(
     settings: AppSettings,
     showOriginal: Boolean,
     revealed: Set<Int>,
+    rightToLeft: Boolean,
 ) {
     if (box.width <= 1f || pageWidth <= 0) return
     val k = box.width / pageWidth
@@ -185,7 +232,7 @@ private fun DrawScope.drawTranslatedBalloons(
         textAlign = Paint.Align.CENTER
         color = android.graphics.Color.BLACK
     }
-    val measurer = object : Measurer {
+    val measurer: Measurer = object : Measurer {
         override fun width(text: String, sizePx: Float): Float {
             paint.textSize = sizePx
             return paint.measureText(text)
@@ -221,6 +268,10 @@ private fun DrawScope.drawTranslatedBalloons(
             val boxH = (bottom - top) - pad
             if (boxW <= 4f || boxH <= 4f) return@rotate
             val seed = max(8f, min(boxH, boxW * 1.1f) * 0.92f * settings.fontScale)
+            if (rightToLeft && !showSource) {
+                drawRtlBalloonText(paint, measurer, text, left, top, right, bottom, boxW, boxH, seed, settings)
+                return@rotate
+            }
             val fitted = TextFitter.fit(
                 text = text,
                 boxWidth = boxW,

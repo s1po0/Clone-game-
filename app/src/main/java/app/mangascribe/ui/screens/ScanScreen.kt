@@ -101,6 +101,25 @@ fun ScanScreen(viewModel: LibraryViewModel) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
 
+        val advice = app.mangascribe.translate.EngineCatalog.kurdishAdvice(
+            settings.targetLanguage,
+            settings.llmApiKey.isNotBlank(),
+        )
+        if (advice != null) {
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                ),
+            ) {
+                Text(
+                    advice,
+                    modifier = Modifier.padding(14.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+            }
+        }
+
         Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
             Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text("Translating ${settings.source.displayName} → ${settings.target.displayName}",

@@ -19,7 +19,7 @@ written from scratch, and the recognition runs locally rather than on a server.
 | **Overlay translation** | Bubbles are found, the original lettering is masked with the bubble's own paper colour, the translation is typeset inside the same box, at the same angle. |
 | **Tap to compare** | Tap any bubble to flip it back to the original text. Long-press-free, one hand. |
 | **Vertical Japanese** | Column-aware OCR post-processing, furigana stripping, and right-to-left vertical typesetting when the source bubble is a column. |
-| **22 languages** | Japanese, Korean, Chinese (both scripts), Arabic, Persian, **Kurdish (Sorani)**, Turkish, Russian, Ukrainian, Hindi, Bengali, Tamil, Thai, Vietnamese, Indonesian and the big European languages. RTL targets are typeset RTL. |
+| **24 languages** | Japanese, Korean, Chinese (both scripts), Arabic, Persian, **Kurdish (Sorani)**, Turkish, Russian, Ukrainian, Hindi, Bengali, Tamil, Thai, Vietnamese, Indonesian and the big European languages. RTL targets are typeset RTL. |
 | **Reader** | Vertical scroll for webtoons, page height from each page's own aspect ratio, pinch-zoom, per-page progress, favourites. |
 | **Whole chapters** | Translate a whole book with a progress pill; a page that fails keeps its original art and can be retried alone. |
 | **Edit mode** | Retype a translation, hide a balloon, nudge or enlarge it, then save. Page-local, never rewrites the chapter. |
@@ -27,6 +27,32 @@ written from scratch, and the recognition runs locally rather than on a server.
 | **Archives** | `.cbz` / `.zip` open directly. `.cbr` is detected and refused with an explanation instead of crashing. |
 | **Export** | Render the translated page to PNG and share it, or copy the text out. |
 | **Privacy** | Images never leave the phone. Only the recognised **text** goes to the translator you pick. Keys are excluded from cloud backups. |
+
+## Kurdish (Sorani)
+
+کوردیی سۆرانی is a first-class target, not an entry in a list — and it is the hardest pair in
+the app, so the app is straight about it:
+
+- **Recognition.** ML Kit has no Kurdish model. Sorani uses Arabic script, so the Arabic model
+  reads it; the letters it cannot know (پ ژ گ چ ڤ ۆ ێ ڕ ڵ ە) come through, and the three it
+  misreads — ك for ک, ي for ی, ھ for ه — are repaired after OCR (`OcrCleanup.normaliseKurdish`).
+- **Detection.** A sentence is checked for Kurdish-only letters *before* the Arabic test, so a
+  Kurdish page is never silently treated as Arabic.
+- **Translation.** The **model endpoint** is the reliable route: the prompt names Central
+  Kurdish (Sorani), forbids Arabic ك/ي and forbids Kurmanji in Latin letters, because a model
+  told only "Kurdish" answers in Kurmanji. MyMemory is tried with `ckb`, `ku-Arab` and `ku`,
+  in that order. **LibreTranslate has no Kurdish at all** — the settings screen says so
+  instead of producing a failed page.
+- **Typesetting.** Right-aligned lines, wrap points the Arabic shaper allows (a joined word is
+  never cut in half), kashida before any further font shrinking, and RTL isolation around
+  Latin words so a character name does not jump to the wrong end of the bubble.
+- **Kurdish source too.** A Kurdish page can be read as well as written: Sorani is in the
+  *read from* list, detected on its own letters, and its OCR letters are repaired first.
+- **One tap.** The library has a کوردیی سۆرانی chip; Settings has a Kurdish panel that says
+  what is missing when no engine can reach it yet.
+
+Without a model key, the honest alternative is to target **Turkish** (MyMemory and
+LibreTranslate both handle it well) and read from there.
 
 ## Engines
 

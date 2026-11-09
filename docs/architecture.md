@@ -32,6 +32,23 @@ LibraryViewModel ──► LibraryRepository ──► MlKitOcrEngine  (device)
    font size steps down until the block fits; the mask uses the bubble's sampled paper colour
    and a rounded shape so dark panels do not get white rectangles.
 
+## Kurdish (Sorani) handling
+
+Kurdish is Arabic script with extra letters, and every stage of the pipeline treats it as its
+own case rather than as "Arabic with a different tag":
+
+| Stage | What is different |
+|---|---|
+| Detection | Kurdish-only letters (پ ژ گ چ ڤ ۆ ێ ڕ ڵ ە) are tested **before** the Arabic test |
+| OCR | the Arabic ML Kit model, then `OcrCleanup.normaliseKurdish` (ك→ک, ي/ى→ی, ھ→ه, tatweel removed) |
+| Engines | `Language.engineCodes` holds a real code per engine; `EngineCodes.NONE` means "no code exists" and a pair is reported as unsupported rather than mistranslated |
+| Prompt | names Sorani, spells out the letter set, rules out Kurmanji |
+| Typesetting | `RtlTypeset`: word-safe wrap, right-aligned lines, kashida on short lines, bidi isolation of Latin runs |
+
+The rule behind all of it: **never hand a reader Turkish and call it Kurdish.** If no configured
+engine can reach the pair, `UnsupportedPairException` says so, names the engines it tried, and
+tells the user what would fix it.
+
 ## Decisions worth knowing
 
 - **Balloons live in one JSON column per page**, not a table per balloon. A page read is one

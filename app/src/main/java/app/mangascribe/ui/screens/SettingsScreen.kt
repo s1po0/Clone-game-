@@ -134,6 +134,7 @@ fun SettingsScreen(viewModel: LibraryViewModel) {
 
         Section("Translation engine") {
             EngineRow(settings) { id -> viewModel.updateSettings { it.copy(engineId = id) } }
+            KurdishCoverage(settings)
             Text(
                 "Free engines need no account. A model endpoint gives the best dialogue and " +
                     "keeps each balloon separate.",
@@ -270,6 +271,51 @@ private fun LanguagePicker(
 }
 
 private fun viewModelLanguages(): List<Language> = app.mangascribe.core.Languages.all
+
+/**
+ * The Kurdish question, answered honestly. Sorani is the language this app was asked for, and
+ * the choice of engine decides whether it works at all — so the screen says so before the
+ * user finds out from a failed translation.
+ */
+@Composable
+private fun KurdishCoverage(settings: AppSettings) {
+    val supported = app.mangascribe.translate.EngineCatalog.supports(
+        app.mangascribe.core.EngineCodes.LLM,
+        settings.sourceLanguage,
+        "ckb",
+    )
+    val hasKey = settings.llmApiKey.isNotBlank()
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text("کوردیی سۆرانی", style = MaterialTheme.typography.titleMedium)
+        Text(
+            when {
+                hasKey && supported ->
+                    "Ready: your model endpoint translates into Sorani, and the page is typeset " +
+                        "right to left with the Kurdish letters kept intact."
+                hasKey ->
+                    "Your model can translate, but this source language has no Kurdish route yet."
+                else ->
+                    "Not set up yet. Kurdish Sorani needs a model key: LibreTranslate has no " +
+                        "Kurdish, and MyMemory only sometimes does. Without a key, pick Turkish " +
+                        "as the target."
+            },
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FilterChip(
+                selected = settings.targetLanguage == "ckb",
+                onClick = { viewModel.useKurdish() },
+                label = { Text("Target: Sorani") },
+            )
+            FilterChip(
+                selected = settings.engineId == app.mangascribe.core.EngineCodes.LLM && hasKey,
+                onClick = { viewModel.updateSettings { it.copy(engineId = "openai-compatible") } },
+                label = { Text("Use the model") },
+            )
+        }
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

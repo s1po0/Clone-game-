@@ -8,7 +8,7 @@ import kotlin.math.min
  * whether the script is written in vertical columns — the setting that decides how a bubble
  * is typeset and how OCR post-processing cleans it up.
  */
-enum class Script { LATIN, JAPANESE, CHINESE, KOREAN, ARABIC, CYRILLIC, DEVANAGARI, THAI, OTHER }
+enum class Script { LATIN, ARABIC, KURDISH, JAPANESE, CHINESE, KOREAN, CYRILLIC, DEVANAGARI, THAI, OTHER }
 
 data class Language(
     val code: String,          // BCP-47-ish tag used across the app and for translation APIs
@@ -21,29 +21,115 @@ data class Language(
     val rtl: Boolean = false,
     /** Usually written in vertical columns (manga/manhua/manhwa). */
     val vertical: Boolean = false,
-)
+    /**
+     * The code each engine wants, when it is not the app's own. Engines disagree about
+     * Kurdish exactly as you would expect: some want `ckb`, some `ku`, one wants `ku-Arab`.
+     * `null` means the app code is used as-is; [EngineCodes.NONE] means "no code exists" and
+     * the translator must find another way round (a pivot language, or say so plainly).
+     */
+    val engineCodes: Map<String, String?> = emptyMap(),
+) {
+    fun codeFor(engineId: String): String? = when {
+        engineCodes.containsKey(engineId) -> engineCodes[engineId]
+        else -> code
+    }
+}
+
+/**
+ * Kurdish (Sorani) is the language this app was asked for first, and the one every engine
+ * handles worst. This object is the single place that knows the differences, so a translator
+ * never guesses a code and a UI never promises a pair that cannot work.
+ */
+object EngineCodes {
+    /** Sentinel: the engine has no code for this language at all. */
+    const val NONE: String = "--none--"
+
+    const val MYMEMORY = "mymemory"
+    const val LIBRETRANSLATE = "libretranslate"
+    const val LLM = "openai-compatible"
+
+    /** Pair used when an engine cannot reach Kurdish directly: go through Turkish. */
+    const val KURDISH_PIVOT = "tr"
+
+    fun isKurdish(code: String?): Boolean =
+        code == "ckb" || code == "ku" || code.equals("ku-Arab", ignoreCase = true)
+
+    /** True when the engine has no direct route between two languages and a pivot is needed. */
+    fun needsPivot(engineId: String, from: String, to: String): Boolean {
+        val src = Languages.of(from).codeFor(engineId) ?: return false
+        val dst = Languages.of(to).codeFor(engineId) ?: return false
+        return src == NONE || dst == NONE
+    }
+}
 
 object Languages {
     val all: List<Language> = listOf(
-        Language("ja", "Japanese", "日本語", Script.JAPANESE, "japanese", vertical = true),
+        Language(
+            "ja", "Japanese", "日本語", Script.JAPANESE, "japanese", vertical = true,
+            engineCodes = mapOf(EngineCodes.LLM to "ja"),
+        ),
         Language("ko", "Korean", "한국어", Script.KOREAN, "korean"),
-        Language("zh-Hans", "Chinese (Simplified)", "简体中文", Script.CHINESE, "chinese"),
-        Language("zh-Hant", "Chinese (Traditional)", "繁體中文", Script.CHINESE, "chinese"),
+        // Kurdish (Kurmanji) reads Latin script; Sorani above reads Arabic script.
+        Language(
+            "zh-Hans", "Chinese (Simplified)", "简体中文", Script.CHINESE, "chinese",
+            engineCodes = mapOf(EngineCodes.LLM to "zh"),
+        ),
+        Language(
+            "zh-Hant", "Chinese (Traditional)", "繁體中文", Script.CHINESE, "chinese",
+            engineCodes = mapOf(EngineCodes.LLM to "zh-Hant"),
+        ),
+        // English is free of charge on every engine, so it is also the pivot leg of last resort.
         Language("en", "English", "English", Script.LATIN, "latin"),
-        Language("ar", "Arabic", "العربية", Script.ARABIC, "arabic", rtl = true),
-        Language("ckb", "Kurdish (Sorani)", "کوردی", Script.ARABIC, "arabic", rtl = true),
-        Language("fa", "Persian", "فارسی", Script.ARABIC, "arabic", rtl = true),
-        Language("tr", "Turkish", "Türkçe", Script.LATIN, "latin"),
+        Language(
+            "ar", "Arabic", "العربية", Script.ARABIC, "arabic", rtl = true,
+            engineCodes = mapOf(EngineCodes.LLM to "ar"),
+        ),
+        Language(
+            code = "ckb",
+            displayName = "Kurdish (Sorani)",
+            nativeName = "کوردیی سۆرانی",
+            script = Script.KURDISH,
+            // ML Kit has no Kurdish model; it has an Arabic one, and Sorani is Arabic script
+            // (پ ژ گ چ ڤ ۆ ێ ڕ ڵ ە). Recognition is close but not free — see OcrCleanup.
+            ocrModel = "arabic",
+            rtl = true,
+            engineCodes = mapOf(
+                EngineCodes.MYMEMORY to "ckb",
+                EngineCodes.LIBRETRANSLATE to EngineCodes.NONE,
+                EngineCodes.LLM to "ckb",
+            ),
+        ),
+        Language(
+            code = "fa",
+            displayName = "Persian",
+            nativeName = "فارسی",
+            script = Script.ARABIC,
+            ocrModel = "arabic",
+            rtl = true,
+            engineCodes = mapOf(EngineCodes.LLM to "fa"),
+        ),
+        Language(
+            "tr", "Turkish", "Türkçe", Script.LATIN, "latin",
+            // MyMemory reaches Kurdish through Turkish, so Turkish is the pivot leg.
+            engineCodes = mapOf(
+                EngineCodes.MYMEMORY to "tr",
+                EngineCodes.LIBRETRANSLATE to "tr",
+                EngineCodes.LLM to "tr",
+            ),
+        ),
         Language("fr", "French", "Français", Script.LATIN, "latin"),
         Language("de", "German", "Deutsch", Script.LATIN, "latin"),
         Language("es", "Spanish", "Español", Script.LATIN, "latin"),
         Language("it", "Italian", "Italiano", Script.LATIN, "latin"),
         Language("pt", "Portuguese", "Português", Script.LATIN, "latin"),
-        Language("ru", "Russian", "Русский", Script.CYRILLIC, "cyrillic"),
-        Language("uk", "Ukrainian", "Українська", Script.CYRILLIC, "cyrillic"),
+        Language("ru", "Russian", "Русский", Script.CYRILLIC, "cyrillic",
+            engineCodes = mapOf(EngineCodes.LLM to "ru")),
+        Language("uk", "Ukrainian", "Українська", Script.CYRILLIC, "cyrillic",
+            engineCodes = mapOf(EngineCodes.LLM to "uk")),
         Language("id", "Indonesian", "Bahasa Indonesia", Script.LATIN, "latin"),
         Language("vi", "Vietnamese", "Tiếng Việt", Script.LATIN, "latin"),
-        Language("th", "Thai", "ไทย", Script.THAI, null),
+        Language("th", "Thai", "ไทย", Script.THAI, null,
+            engineCodes = mapOf(EngineCodes.MYMEMORY to "th", EngineCodes.LLM to "th")),
         Language("hi", "Hindi", "हिन्दी", Script.DEVANAGARI, "devanagari"),
         Language("bn", "Bengali", "বাংলা", Script.DEVANAGARI, "devanagari"),
         Language("ta", "Tamil", "தமிழ்", Script.DEVANAGARI, "devanagari"),
@@ -64,9 +150,14 @@ object Languages {
         }
     }
 
-    /** Auto-detect the source language from the characters actually recognised. */
+    /**
+     * Auto-detect the source language from the characters actually recognised.
+     * Kurdish (Sorani) is checked before Arabic: they share a script, but Sorani's own letters
+     * (پ ژ گ چ ڤ ۆ ێ ڕ ڵ ە) are enough to tell them apart on anything longer than a word.
+     */
     fun detect(text: String): String? {
         if (text.isBlank()) return null
+        if (OcrCleanup.looksKurdish(text)) return "ckb"
         val hasKana = text.any { it in '\u3040'..'\u30FF' }
         val hasHan = text.any { it in '\u4E00'..'\u9FFF' }
         val hasHangul = text.any { it in '\uAC00'..'\uD7AF' }
@@ -151,11 +242,57 @@ object OcrCleanup {
         return meaningful == 0
     }
 
+    // ---- Kurdish (Sorani) -----------------------------------------------------------------
+    //
+    // Sorani is written in Arabic script with letters Arabic does not have. ML Kit's Arabic
+    // model reads most of them, but it systematically swaps the three it has no glyph for,
+    // and it drops the RTL mark that keeps a Latin word (a character name, a number) from
+    // flipping to the wrong end of the line. Both are repaired here instead of in the UI.
+
+    private val KURDISH_ONLY = setOf('پ', 'ژ', 'گ', 'چ', 'ڤ', 'ۆ', 'ێ', 'ڕ', 'ڵ', 'ە')
+
+    /** Characters that only exist in Kurdish-in-Arabic-script writing. */
+    fun looksKurdish(text: String): Boolean {
+        val hits = text.count { it in KURDISH_ONLY }
+        // Arabic has none of these, Persian has چ پ ژ گ only. Two distinct hits is decisive;
+        // one hit needs a second signal (ۆ ێ ە ڵ ڕ are Persian-free).
+        if (hits >= 2) return true
+        if (hits == 1 && text.any { it in setOf('ۆ', 'ێ', 'ە', 'ڵ', 'ڕ', 'ڤ') }) return true
+        // ە (U+06D5, Kurdish/Persian ae) against ه (U+0647) is the cheapest tell of all.
+        return text.contains('ە') && text.any { it in KURDISH_ONLY }
+    }
+
+    /**
+     * Fix what the Arabic OCR model consistently gets wrong on Kurdish:
+     *  - ك (Arabic kaf) is read where Kurdish writes ک (keheh);
+     *  - ي/ى (Arabic yeh) where Kurdish writes ی;
+     *  - ھ (heh doachashmee) where Kurdish writes ه;
+     *  - the Arabic yeh at a word's end is almost always the Kurdish ezafe or a plural.
+     */
+    fun normaliseKurdish(text: String): String =
+        text.replace('ك', 'ک')
+            .replace('ي', 'ی')
+            .replace('ى', 'ی')
+            .replace('ھ', 'ه')
+            .replace("\u0640", "") // tatweel: OCR padding inside justified Arabic script
+
+    /**
+     * Insert the RTL mark around runs of Latin letters and digits so mixed lines keep their
+     * order when drawn: "Goku ٣" must not render as "٣ Goku" in an RTL paragraph.
+     */
+    fun isolateLatinRuns(text: String): String {
+        val regex = Regex("[A-Za-z0-9][A-Za-z0-9 .,:/\\-]*[A-Za-z0-9]|[A-Za-z0-9]")
+        return regex.replace(text) { m -> "\u2067" + m.value + "\u2069" }
+    }
+
     /** One block's text, in reading order, cleaned for translation. */
     fun clean(raw: String, languageCode: String, stripFurigana: Boolean): String {
         var t = repairLineBreaks(raw)
         if (stripFurigana && Languages.of(languageCode).script == Script.JAPANESE) {
             t = stripFurigana(t)
+        }
+        if (Languages.of(languageCode).script == Script.KURDISH) {
+            t = normaliseKurdish(t)
         }
         t = t.dropWhile { it in NOISE || it.isWhitespace() }
             .dropLastWhile { it in NOISE || it.isWhitespace() }

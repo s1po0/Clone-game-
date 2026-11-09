@@ -48,6 +48,11 @@ android {
 
     testOptions {
         unitTests.isReturnDefaultValues = true
+        // Arabic-script text handling in unit tests depends on JVM locale data being present.
+        unitTests.all {
+            it.systemProperty("user.language", "en")
+            it.systemProperty("file.encoding", "UTF-8")
+        }
     }
 }
 

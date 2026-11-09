@@ -7,6 +7,7 @@ import android.graphics.Paint
 import android.graphics.RectF
 import android.graphics.Typeface
 import app.mangascribe.core.Measurer
+import app.mangascribe.core.RtlTypeset
 import app.mangascribe.core.TextAngle
 import app.mangascribe.core.TextFitter
 import app.mangascribe.core.VerticalTypeset
@@ -24,6 +25,11 @@ data class RenderStyle(
     val maskOriginal: Boolean = true,
     val outlineText: Boolean = false,
     val verticalTypesetting: Boolean = false,
+    /**
+     * Draw right to left: lines anchor on the bubble's right edge and wrap at word
+     * boundaries that the Arabic-script shaper allows. On for Arabic, Persian and Kurdish.
+     */
+    val rightToLeft: Boolean = false,
 )
 
 /**
@@ -134,6 +140,8 @@ class PageRenderer {
                     y += step
                 }
             }
+        } else if (style.rightToLeft) {
+            drawRightToLeft(canvas, text, box, targetWidth, targetHeight, seed, inkPaint, style)
         } else {
             val result = TextFitter.fit(
                 text = text,
@@ -148,17 +156,66 @@ class PageRenderer {
             val totalHeight = result.lines.size * lineHeight
             var y = box.centerY() - totalHeight / 2f + lineHeight * 0.78f
             for (line in result.lines) {
-                val x = if (style.verticalTypesetting) {
-                    box.centerX()
-                } else {
-                    // bubbles read centred; long captions keep the detected block's centre
-                    box.centerX()
-                }
-                drawWithOutline(canvas, line, x, y, inkPaint, style)
+                // bubbles read centred; long captions keep the detected block's centre
+                drawWithOutline(canvas, line, box.centerX(), y, inkPaint, style)
                 y += lineHeight
             }
         }
         canvas.restore()
+    }
+
+    /**
+     * Right-to-left ink for Arabic, Persian and Kurdish (Sorani). Two differences from the
+     * Latin path, both visible to a reader who knows the script:
+     *  - each line is right-aligned to the bubble's edge, because a half-full line in an RTL
+     *    paragraph starts at the right;
+     *  - wrapping uses [RtlTypeset.wrap], which never splits a joined word, and a short line
+     *    is filled with kashida before the font is shrunk any further.
+     */
+    private fun drawRightToLeft(
+        canvas: Canvas,
+        text: String,
+        box: RectF,
+        targetWidth: Float,
+        targetHeight: Float,
+        seed: Float,
+        inkPaint: Paint,
+        style: RenderStyle,
+    ) {
+        val clean = RtlTypeset.normalisePunctuation(text)
+        var size = max(9f, seed)
+        var lines = RtlTypeset.wrap(clean, targetWidth, size, measurer)
+        var guard = 0
+        while (guard++ < 24 && lines.size * measurer.lineHeight(size) > targetHeight && size > 8f) {
+            size = (size * 0.92f).coerceAtLeast(8f)
+            lines = RtlTypeset.wrap(clean, targetWidth, size, measurer)
+        }
+        inkPaint.textSize = size
+        inkPaint.textAlign = Paint.Align.RIGHT
+        val lineHeight = measurer.lineHeight(size)
+        val totalHeight = lines.size * lineHeight
+        var y = box.centerY() - totalHeight / 2f + lineHeight * 0.78f
+        val right = box.right - (box.width() - targetWidth) / 2f
+        for (line in lines) {
+            var draw = line
+            // fill a short single-line bubble with kashida after the last joining letter
+            if (lines.size == 1) {
+                val kashida = RtlTypeset.kashidaCount(measurer.width(line, size), targetWidth, size)
+                if (kashida > 0) draw = withKashida(line, kashida)
+            }
+            drawWithOutline(canvas, draw, right, y, inkPaint, style)
+            y += lineHeight
+        }
+        inkPaint.textAlign = Paint.Align.CENTER
+    }
+
+    /** Insert tatweel after a joining letter near the middle, so the stretch looks natural. */
+    private fun withKashida(line: String, count: Int): String {
+        val joiner = "بتثنيسشصضطظعغفقكلمهیکگچپژڤ"
+        var index = line.indices.firstOrNull { joiner.contains(line[it]) } ?: return line
+        // prefer the last joining letter, which keeps the stretch away from the first word
+        line.indices.lastOrNull { joiner.contains(line[it]) }?.let { index = it }
+        return line.substring(0, index + 1) + "\u0640".repeat(count) + line.substring(index + 1)
     }
 
     private fun drawWithOutline(canvas: Canvas, line: String, x: Float, y: Float, paint: Paint, style: RenderStyle) {

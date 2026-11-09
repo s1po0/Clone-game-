@@ -183,12 +183,22 @@ class LibraryRepository(
                 )
                 return@withContext PageTranslation(page.id, emptyList(), "ocr-none", ocrResult.elapsedMs)
             }
+            // Kurdish is repaired before translation: the Arabic model's ك/ي/ھ are not Kurdish.
             val sourceLanguage = ocrResult.detectedLanguage ?: book.sourceLanguage
+            val prepared = ocrResult.blocks.map { block ->
+                if (app.mangascribe.core.Languages.of(sourceLanguage).script ==
+                    app.mangascribe.core.Script.KURDISH
+                ) {
+                    block.copy(text = app.mangascribe.core.OcrCleanup.normaliseKurdish(block.text))
+                } else {
+                    block
+                }
+            }
             val target = overrideTarget ?: book.targetLanguage
-            val texts = ocrResult.blocks.map { it.text.replace("\n", " ") }
+            val texts = prepared.map { it.text.replace("\n", " ") }
             val pipeline = TranslationPipeline(engines(config), config.engineId)
             val batch = pipeline.translate(texts, sourceLanguage, target)
-            val balloons = ocrResult.blocks.mapIndexed { i, block ->
+            val balloons = prepared.mapIndexed { i, block ->
                 Balloon.from(block, batch.lines.getOrElse(i) { block.text })
                     .copy(maskOriginal = config.maskOriginal)
             }
@@ -272,12 +282,16 @@ class LibraryRepository(
         val bitmap = PageImages.decode(context, page.imageUri, PageImages.READER_TARGET_WIDTH)
             ?: return@withContext null
         val config = settings.current()
+        val targetLanguage = app.mangascribe.core.Languages.of(book.targetLanguage)
         val style = RenderStyle(
             paperColor = renderer.samplePaperColor(bitmap, balloons.first()),
             fontScale = config.fontScale,
             maskOriginal = config.maskOriginal,
             outlineText = config.outlineText,
             verticalTypesetting = config.verticalTypesetting,
+            // Kurdish, Arabic and Persian are drawn right-aligned through the RTL path.
+            rightToLeft = targetLanguage.rtl &&
+                targetLanguage.script != app.mangascribe.core.Script.JAPANESE,
         )
         val rendered: Bitmap = renderer.renderInPlace(bitmap, balloons, style)
         val dir = File(context.cacheDir, "exports").apply { mkdirs() }

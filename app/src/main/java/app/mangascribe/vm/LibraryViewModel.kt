@@ -69,6 +69,30 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
         it.copy(sourceLanguage = it.targetLanguage, targetLanguage = it.sourceLanguage)
     }
 
+    /**
+     * One tap into Kurdish Sorani. If no engine on this device can reach Kurdish yet, the
+     * preference is still saved — the settings screen then says what is missing instead of
+     * a translate button that would fail silently.
+     */
+    fun useKurdish() {
+        updateSettings { it.copy(targetLanguage = "ckb") }
+        val s = settings.value
+        if (app.mangascribe.translate.EngineCatalog.capable("mymemory", s.sourceLanguage, "ckb")
+                .isEmpty() && app.mangascribe.translate.EngineCatalog
+                .capable(app.mangascribe.core.EngineCodes.LLM, s.sourceLanguage, "ckb").isEmpty()
+        ) {
+            showToast("Kurdish needs a model key — add one in Settings")
+        }
+    }
+
+    /** Whether any configured engine can do the current pair, and what to say if not. */
+    fun pairSupported(targetLanguage: String): Boolean =
+        app.mangascribe.translate.EngineCatalog.capable(
+            settings.value.engineId,
+            settings.value.sourceLanguage,
+            targetLanguage,
+        ).isNotEmpty() || app.mangascribe.core.EngineCodes.isKurdish(targetLanguage).not()
+
     // ---- Import ---------------------------------------------------------------------------
 
     fun importUris(uris: List<Uri>, title: String? = null) {

@@ -26,6 +26,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.AutoStories
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Favorite
@@ -148,6 +149,37 @@ fun LibraryScreen(
                         AssistChip(
                             onClick = { pickArchive.launch(arrayOf("*/*")) },
                             label = { Text("Open .cbz / .zip") },
+                        )
+                    }
+                    // The one-tap routes that matter: Kurdish Sorani first, then its neighbours.
+                    Text(
+                        "Read in",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilterChip(
+                            selected = settings.targetLanguage == "ckb",
+                            onClick = { viewModel.useKurdish() },
+                            label = { Text("کوردیی سۆرانی") },
+                            leadingIcon = if (settings.targetLanguage == "ckb") {
+                                { Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                            } else null,
+                        )
+                        FilterChip(
+                            selected = settings.targetLanguage == "tr",
+                            onClick = { viewModel.updateSettings { it.copy(targetLanguage = "tr") } },
+                            label = { Text("Türkçe") },
+                        )
+                        FilterChip(
+                            selected = settings.targetLanguage == "ar",
+                            onClick = { viewModel.updateSettings { it.copy(targetLanguage = "ar") } },
+                            label = { Text("العربية") },
+                        )
+                        FilterChip(
+                            selected = settings.targetLanguage == "en",
+                            onClick = { viewModel.updateSettings { it.copy(targetLanguage = "en") } },
+                            label = { Text("English") },
                         )
                     }
                     OutlinedTextField(
