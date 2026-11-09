@@ -1,0 +1,70 @@
+name: Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - "arena/**"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install platform 35
+        run: |
+          yes | sdkmanager --licenses > /dev/null 2>&1 || true
+          sdkmanager "platforms;android-35" "build-tools;35.0.0" > /dev/null
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle.kts', 'gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: gradle-${{ runner.os }}-
+
+      - name: Unit tests
+        run: ./gradlew :app:testDebugUnitTest --no-daemon --stacktrace
+
+      - name: Assemble debug APK
+        run: ./gradlew :app:assembleDebug --no-daemon --stacktrace
+
+      - name: Collect artifacts
+        if: always()
+        run: |
+          mkdir -p out
+          find app/build/outputs -name "*.apk" -exec cp {} out/ \;
+          ls -lh out || true
+          echo "### APK" >> "$GITHUB_STEP_SUMMARY"
+          ls -lh out/*.apk >> "$GITHUB_STEP_SUMMARY" 2>/dev/null || echo "no apk produced" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload APK
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mangascribe-debug-apk
+          path: out/*.apk
+          if-no-files-found: warn
+
+      - name: Upload test report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-report
+          path: |
+            app/build/reports/tests/**
+            app/build/reports/lint-results*.html
+          if-no-files-found: ignore
