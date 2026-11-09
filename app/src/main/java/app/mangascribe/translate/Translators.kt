@@ -47,7 +47,7 @@ class UnsupportedPairException(
         append(Languages.of(sourceLanguage).displayName).append(" → ")
         append(Languages.of(targetLanguage).displayName).append('.')
         if (tried.isNotEmpty()) append(" Tried: ").append(tried.joinToString(", ")).append('.')
-        if (EngineCodes.isKurdish(targetLanguage)) {
+        if (EngineCodes.isSorani(targetLanguage)) {
             append(" MyMemory does not translate into Kurdish, and LibreTranslate has no " +
                 "Kurdish at all. Add a model key in Settings → Translation engine, or choose " +
                 "Turkish as the target and read it from there.")
@@ -385,7 +385,7 @@ object EngineCatalog {
             .sortedBy { if (it.id == preferred) 0 else 1 }
 
     fun kurdishAdvice(targetLanguage: String, hasLlmKey: Boolean): String? {
-        if (!EngineCodes.isKurdish(targetLanguage)) return null
+        if (!EngineCodes.isSorani(targetLanguage)) return null
         return if (hasLlmKey) {
             "Kurdish Sorani goes through your model endpoint. MyMemory is kept as the fallback."
         } else {

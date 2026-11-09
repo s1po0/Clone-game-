@@ -51,8 +51,12 @@ object EngineCodes {
     /** Pair used when an engine cannot reach Kurdish directly: go through Turkish. */
     const val KURDISH_PIVOT = "tr"
 
+    /** Both Kurdish languages the app knows: Sorani (Arabic script) and Kurmanji (Latin). */
     fun isKurdish(code: String?): Boolean =
         code == "ckb" || code == "ku" || code.equals("ku-Arab", ignoreCase = true)
+
+    /** Sorani specifically — the dialect with no LibreTranslate route and a strict letter set. */
+    fun isSorani(code: String?): Boolean = code == "ckb" || code.equals("ku-Arab", ignoreCase = true)
 
     /** True when the engine has no direct route between two languages and a pivot is needed. */
     fun needsPivot(engineId: String, from: String, to: String): Boolean {
@@ -97,6 +101,20 @@ object Languages {
                 EngineCodes.MYMEMORY to "ckb",
                 EngineCodes.LIBRETRANSLATE to EngineCodes.NONE,
                 EngineCodes.LLM to "ckb",
+            ),
+        ),
+        Language(
+            code = "ku",
+            displayName = "Kurdish (Kurmanji)",
+            nativeName = "Kurmancî",
+            // Latin script — a different language from Sorani above, and the one engines are
+            // more willing to translate. Kept separate so a Sorani reader never gets Kurmanji.
+            script = Script.LATIN,
+            ocrModel = "latin",
+            engineCodes = mapOf(
+                EngineCodes.MYMEMORY to "ku",
+                EngineCodes.LIBRETRANSLATE to EngineCodes.NONE,
+                EngineCodes.LLM to "ku",
             ),
         ),
         Language(
@@ -158,6 +176,7 @@ object Languages {
     fun detect(text: String): String? {
         if (text.isBlank()) return null
         if (OcrCleanup.looksKurdish(text)) return "ckb"
+        if (OcrCleanup.looksKurmanji(text)) return "ku"
         val hasKana = text.any { it in '\u3040'..'\u30FF' }
         val hasHan = text.any { it in '\u4E00'..'\u9FFF' }
         val hasHangul = text.any { it in '\uAC00'..'\uD7AF' }
@@ -260,6 +279,19 @@ object OcrCleanup {
         if (hits == 1 && text.any { it in setOf('ۆ', 'ێ', 'ە', 'ڵ', 'ڕ', 'ڤ') }) return true
         // ە (U+06D5, Kurdish/Persian ae) against ه (U+0647) is the cheapest tell of all.
         return text.contains('ە') && text.any { it in KURDISH_ONLY }
+    }
+
+    /**
+     * Kurmanji is Latin script with letters that are not Turkish, English or German: ç ê î ş û.
+     * Four of them in one line, or a Kurdish-only word like "ez"/"û", is enough to name it.
+     */
+    fun looksKurmanji(text: String): Boolean {
+        val marks = text.count { it in "êîûşçÊÎÛŞÇ" }
+        if (marks >= 3) return true
+        val words = text.lowercase().split(Regex("[^a-zçêîşû]+")).filter { it.length > 1 }
+        if (words.isEmpty()) return false
+        val kurdishWords = setOf("ez", "tu", "ew", "û", "ji", "li", "ne", "ye", "bû", "kir")
+        return words.count { it in kurdishWords } * 4 >= words.size
     }
 
     /**

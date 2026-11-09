@@ -43,6 +43,21 @@ class KurdishLanguageTest {
     }
 
     @Test
+    fun `kurmanji is its own language, not sorani`() {
+        val ku = Languages.of("ku")
+        assertEquals(Script.LATIN, ku.script)
+        assertFalse(ku.rtl)
+        // Sorani rules must not leak into Kurmanji
+        assertEquals("ku", Languages.detect("Ez ji te hez dikim û tu jî dizanî"))
+    }
+
+    @Test
+    fun `sorani advice does not fire for kurmanji`() {
+        assertNull(app.mangascribe.translate.EngineCatalog.kurdishAdvice("ku", hasLlmKey = false))
+        assertNotNull(app.mangascribe.translate.EngineCatalog.kurdishAdvice("ckb", hasLlmKey = false))
+    }
+
+    @Test
     fun `kurdish ocr model exists and brings latin along`() {
         assertEquals("arabic", ckb.ocrModel)
         assertEquals(listOf("arabic", "latin"), Languages.ocrModelsFor("ckb"))

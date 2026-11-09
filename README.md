@@ -19,7 +19,7 @@ written from scratch, and the recognition runs locally rather than on a server.
 | **Overlay translation** | Bubbles are found, the original lettering is masked with the bubble's own paper colour, the translation is typeset inside the same box, at the same angle. |
 | **Tap to compare** | Tap any bubble to flip it back to the original text. Long-press-free, one hand. |
 | **Vertical Japanese** | Column-aware OCR post-processing, furigana stripping, and right-to-left vertical typesetting when the source bubble is a column. |
-| **24 languages** | Japanese, Korean, Chinese (both scripts), Arabic, Persian, **Kurdish (Sorani)**, Turkish, Russian, Ukrainian, Hindi, Bengali, Tamil, Thai, Vietnamese, Indonesian and the big European languages. RTL targets are typeset RTL. |
+| **22 languages** | Japanese, Korean, Chinese (both scripts), Arabic, Persian, **Kurdish (Sorani)**, Turkish, Russian, Ukrainian, Hindi, Bengali, Tamil, Thai, Vietnamese, Indonesian and the big European languages. RTL targets are typeset RTL. |
 | **Reader** | Vertical scroll for webtoons, page height from each page's own aspect ratio, pinch-zoom, per-page progress, favourites. |
 | **Whole chapters** | Translate a whole book with a progress pill; a page that fails keeps its original art and can be retried alone. |
 | **Edit mode** | Retype a translation, hide a balloon, nudge or enlarge it, then save. Page-local, never rewrites the chapter. |
