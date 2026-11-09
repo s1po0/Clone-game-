@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A speech balloon with a translation bracket inside it, drawn as vectors. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FF7A59"
+        android:pathData="M30,26h48a10,10 0 0 1 10,10v28a10,10 0 0 1 -10,10H48l-14,12v-12h-4a10,10 0 0 1 -10,-10V36a10,10 0 0 1 10,-10z" />
+    <path
+        android:fillColor="#0B0D12"
+        android:pathData="M42,40h24v5H42z M42,50h18v5H42z M42,60h22v5H42z" />
+</vector>

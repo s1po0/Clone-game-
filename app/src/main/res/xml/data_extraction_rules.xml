@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<data-extraction-rules>
+    <cloud-backup>
+        <include domain="database" path="." />
+        <include domain="file" path="pages/" />
+        <include domain="file" path="books/" />
+        <exclude domain="file" path="datastore/mangascribe_settings.preferences_pb" />
+    </cloud-backup>
+    <device-transfer>
+        <include domain="database" path="." />
+        <include domain="file" path="pages/" />
+        <include domain="file" path="books/" />
+        <include domain="file" path="datastore/" />
+    </device-transfer>
+</data-extraction-rules>

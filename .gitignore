@@ -1,0 +1,21 @@
+# Android / Gradle
+*.iml
+.gradle/
+/local.properties
+/.idea/
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+*.apk
+*.aab
+*.jks
+*.keystore
+app/release/
+# The earlier game-studio template kept here for reference only
+.archive/game-studio/.gradle/
+
+# The earlier game-studio template is kept out of Git (huge, unrelated to this app).
+.archive/
