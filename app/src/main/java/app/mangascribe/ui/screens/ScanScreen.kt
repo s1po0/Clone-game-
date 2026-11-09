@@ -60,25 +60,29 @@ fun ScanScreen(viewModel: LibraryViewModel) {
     var engine by remember { mutableStateOf<String?>(null) }
 
     var pending by remember { mutableStateOf(false) }
+    // The book that was newest when the picker opened: anything else is the new import.
+    var previousNewest by remember { mutableStateOf<Long?>(null) }
+    val books by viewModel.books.collectAsStateWithLifecycle()
 
     val pick = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         if (uri == null) return@rememberLauncherForActivityResult
+        previousNewest = books.maxByOrNull { it.createdAt }?.id
+        page = null
+        balloons = emptyList()
+        engine = null
         viewModel.importUris(listOf(uri), title = "Screenshot — ${Dates.shortNow()}")
         // The import is async; the books flow tells us when the new one lands.
         pending = true
     }
 
     // Watches for the book the import created, then translates its page straight away.
-    val books by viewModel.books.collectAsStateWithLifecycle()
     LaunchedEffect(books, pending) {
         if (!pending) return@LaunchedEffect
         val newest = books.maxByOrNull { it.createdAt } ?: return@LaunchedEffect
-        if (newest.id == bookId && newest.pageCount > 0) {
-            pending = false
-            viewModel.translatePage(newest.id, 0)
-            return@LaunchedEffect
-        }
+        if (newest.id == previousNewest || newest.pageCount == 0) return@LaunchedEffect
         bookId = newest.id
+        pending = false
+        viewModel.translatePage(newest.id, 0)
     }
 
     Column(
@@ -153,7 +157,7 @@ fun ScanScreen(viewModel: LibraryViewModel) {
                 Text("Engine: $engine", style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-        } else if (page != null) {
+        } else if (page?.status == PageEntity.Status.DONE) {
             Box(Modifier.fillMaxWidth().height(160.dp), contentAlignment = Alignment.Center) {
                 Text("No text was found in that picture. Try a sharper screenshot.")
             }

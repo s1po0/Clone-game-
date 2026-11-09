@@ -43,7 +43,8 @@ run together when a page mixes scripts).
 
 ## Build
 
-Requirements: JDK 17, Android SDK 35, and a device or emulator on API 26+.
+Requirements: JDK 17, Android SDK 35, and a device or emulator on API 26+ — or open the folder
+in Android Studio (Ladybug or newer), which downloads the SDK for you.
 
 ```bash
 ./gradlew :app:assembleDebug          # APK at app/build/outputs/apk/debug/
