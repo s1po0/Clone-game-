@@ -6,6 +6,9 @@ on:
     branches:
       - "arena/**"
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -82,6 +85,20 @@ jobs:
           name: mangascribe-debug-apk
           path: out/*.apk
           if-no-files-found: warn
+
+      # No log access from every environment, but the repository is readable from all of
+      # them: a failed build commits what the compiler said to ci-diagnostics.txt.
+      - name: Publish diagnostics to the branch
+        if: failure()
+        continue-on-error: true
+        run: |
+          git config user.name "mangascribe-ci"
+          git config user.email "ci@users.noreply.github.com"
+          cp out/diagnostics.txt ci-diagnostics.txt
+          git add ci-diagnostics.txt
+          if git diff --cached --quiet; then echo "no change"; exit 0; fi
+          git commit -m "ci: compiler diagnostics [skip ci]"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
 
       - name: Upload diagnostics
         if: always()
