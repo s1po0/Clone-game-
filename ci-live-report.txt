@@ -1,7 +1,8 @@
 == live endpoint test ==
-> Task :app:kspDebugUnitTestKotlin FAILED
-BUILD FAILED in 51s
+> Task :app:compileDebugUnitTestKotlin FAILED
+BUILD FAILED in 41s
 
 == compile status ==
-e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/test/java/app/mangascribe/core/GlossaryTest.kt:84:2 imports are only allowed in the beginning of file
-BUILD FAILED in 51s
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/test/java/app/mangascribe/core/TranslationLogicTest.kt:27:31 Overload resolution ambiguity between candidates:
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/test/java/app/mangascribe/core/TranslationLogicTest.kt:28:30 'operator' modifier is required on 'FirNamedFunctionSymbol kotlin/compareTo' in 'compareTo'.
+BUILD FAILED in 41s
