@@ -137,19 +137,11 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /**
-     * One tap into Kurdish Sorani. If no engine on this device can reach Kurdish yet, the
-     * preference is still saved — the settings screen then says what is missing instead of
-     * a translate button that would fail silently.
+     * One tap into Kurdish Sorani. Nothing can be missing any more: Google is the only engine
+     * and it has Sorani for every source language, so this is a plain preference change.
      */
     fun useKurdish() {
         updateSettings { it.copy(targetLanguage = "ckb") }
-        val s = settings.value
-        if (app.mangascribe.translate.EngineCatalog.capable("mymemory", s.sourceLanguage, "ckb")
-                .isEmpty() && app.mangascribe.translate.EngineCatalog
-                .capable(app.mangascribe.core.EngineCodes.LLM, s.sourceLanguage, "ckb").isEmpty()
-        ) {
-            showToast("Kurdish needs a model key — add one in Settings")
-        }
     }
 
     /** Whether any configured engine can do the current pair, and what to say if not. */

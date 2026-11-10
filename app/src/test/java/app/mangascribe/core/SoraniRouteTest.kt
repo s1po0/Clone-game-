@@ -47,7 +47,7 @@ class SoraniRouteTest {
     @Test
     fun `a kurdish page comes back kurdish, one request at a time`() = runBlocking {
         val http = StrictGoogle()
-        val engine = KeylessTranslateTranslator(http, lingvaInstances = emptyList())
+        val engine = KeylessTranslateTranslator(http)
         val lines = (1..6).map { "line $it" }
         val batch: TranslationBatch = engine.translate(lines, "en", "ckb")
 
@@ -63,7 +63,7 @@ class SoraniRouteTest {
     @Test
     fun `an endpoint that echoes english is not accepted for sorani`() = runBlocking {
         val http = StrictGoogle()
-        val engine = KeylessTranslateTranslator(http, lingvaInstances = emptyList())
+        val engine = KeylessTranslateTranslator(http)
         val batch = engine.translate(listOf("what is this"), "en", "ckb")
         // Even the echo path must not leave Latin in a Kurdish line.
         assertTrue(
@@ -75,7 +75,7 @@ class SoraniRouteTest {
     @Test
     fun `the request carries the browser client and the kurdish target`() = runBlocking {
         val http = StrictGoogle()
-        KeylessTranslateTranslator(http, lingvaInstances = emptyList())
+        KeylessTranslateTranslator(http)
             .translate(listOf("hello"), "en", "ckb")
         assertTrue(http.seen.isNotEmpty())
         assertTrue(http.seen.any { it.contains("client=gtx") })

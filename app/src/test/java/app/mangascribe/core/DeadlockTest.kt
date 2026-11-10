@@ -32,7 +32,7 @@ class DeadlockTest {
     fun `a page with more lines than the concurrency limit still finishes`() = runBlocking {
         HostHealth.reset()
         KeylessTranslateTranslator.resetHosts()
-        val engine = KeylessTranslateTranslator(OkHttp(), maxConcurrent = 3, lingvaInstances = emptyList())
+        val engine = KeylessTranslateTranslator(OkHttp(), maxConcurrent = 3)
         val page = (1..12).map { "line $it" }
         val batch = withTimeout(10_000) { engine.translate(page, "en", "ckb") }
         assertEquals(page.size, batch.lines.size)

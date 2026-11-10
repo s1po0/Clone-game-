@@ -41,7 +41,7 @@ class SamePairTest {
     @Test
     fun `a kurdish source with a kurdish target is asked as auto`() = runBlocking {
         val http = Endpoint()
-        val engine = KeylessTranslateTranslator(http, lingvaInstances = emptyList())
+        val engine = KeylessTranslateTranslator(http)
         val batch = engine.translate(listOf("ASPECT: TEMPLE SLAVE"), "ckb", "ckb")
         assertEquals(listOf("کوردی"), batch.lines)
         assertTrue("sent ckb→ckb: ${http.urls}", http.urls.none { it.contains("sl=ckb") })
@@ -50,7 +50,7 @@ class SamePairTest {
     @Test
     fun `an answered page is never transliterated`() = runBlocking {
         val http = Endpoint()
-        val engine = KeylessTranslateTranslator(http, lingvaInstances = emptyList())
+        val engine = KeylessTranslateTranslator(http)
         val page = listOf("THEY SAY THE SPELL VALUES BALANCE AS MUCH AS CHALLENGE.", "ASPECT: TEMPLE SLAVE")
         val batch = engine.translate(page, "ckb", "ckb")
         assertTrue(
@@ -76,7 +76,7 @@ class SamePairTest {
             override suspend fun postJson(url: String, body: String, headers: Map<String, String>): String =
                 get(url, headers)
         }
-        val engine = KeylessTranslateTranslator(http, lingvaInstances = emptyList())
+        val engine = KeylessTranslateTranslator(http)
         val batch = engine.translate(listOf("one", "two", "three"), "en", "ckb")
         assertEquals(3, batch.lines.count { it.isNotBlank() })
         assertTrue(batch.lines.none { it == "one" || it == "two" || it == "three" })

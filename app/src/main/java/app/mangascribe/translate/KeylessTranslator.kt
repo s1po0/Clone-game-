@@ -17,17 +17,19 @@ import kotlinx.coroutines.sync.withPermit
  * left for Kurdish: MyMemory has no Kurdish at all, LibreTranslate has none either, and the page
  * failed with "MyMemory returned no text".
  *
- * This engine is a *rotation*, not a second guess. Four independent keyless endpoints are tried
- * in order, each with its own parser, so a 429, a 403 from a changed `client` value, a consent
- * page or a dead mirror costs one request and moves on:
+ * This engine is a *rotation*, not a second guess. Three independent Google endpoints are tried
+ * in order, each with its own parser, so a 429, a 403 from a changed `client` value or a consent
+ * page costs one request and moves on:
  *
  *  1. `translate.googleapis.com/translate_a/single?client=gtx` — the endpoint the web UI uses;
  *  2. `clients5.google.com/translate_a/t?client=dict-chrome-ex` — the Chrome dictionary
  *     extension's endpoint, which answers with a different shape (`{"sentences":[…]}`) and,
  *     in practice, has a separate quota from (1);
- *  3. **Lingva** (`/api/v1/{source}/{target}/{query}`) — a free front-end for Google Translate
- *     with public instances; each instance is its own server, so a rate limit is per host;
- *  4. `translate.google.com/translate_a/single?client=gtx` — the m.google path, last resort.
+ *  3. `translate.google.com/translate_a/single?client=gtx` — the m.google path, last resort.
+ *
+ * Lingva mirrors used to sit between (2) and (3). They are gone: every public instance answers
+ * `/api/v1/en/ckb/…` with `Invalid target language code`, so they only ever cost four requests
+ * per line and made a language gap look like a network fault.
  *
  * Failure policy, learned from the field:
  *  - a host that fails *transport-level* is remembered and skipped for the rest of the run
@@ -63,7 +65,6 @@ class KeylessTranslateTranslator(
      * in disguise. Serial requests with a short pause are slower on paper and faster in practice.
      */
     private val maxConcurrent: Int = 1,
-    private val lingvaInstances: List<String> = LINGVA_INSTANCES,
 ) : Translator {
 
     override val id = EngineCodes.KEYLESS
@@ -312,24 +313,6 @@ class KeylessTranslateTranslator(
                     },
                 )
             )
-            // Lingva: one route per public instance, because each instance is its own server and
-            // therefore its own rate limit. A dead instance is skipped for the rest of the run.
-            lingvaInstances.forEachIndexed { index, base ->
-                val host = runCatching { java.net.URI(base).host }.getOrNull() ?: base
-                add(
-                    Route(
-                        name = "Lingva ${index + 1}",
-                        host = host,
-                        build = { q ->
-                            // The API takes the raw query as the last path segment; the caller
-                            // already URL-encoded it, which is what the instance expects.
-                            "${base.trimEnd('/')}/api/v1/$sl/$tl/$q"
-                        },
-                        headers = mapOf("User-Agent" to ua, "Accept" to "application/json"),
-                        parser = { body, _ -> KeylessParsers.parseLingva(body) },
-                    )
-                )
-            }
             add(
                 Route(
                     name = "Google mobile",
@@ -356,18 +339,6 @@ class KeylessTranslateTranslator(
             (error is TranslationException && error.message.orEmpty().contains("HTTP 5"))
 
     companion object {
-        /**
-         * Public Lingva instances (from the project's own `instances.json`). They come and go;
-         * the list is a rotation, so one being down costs one skipped host, not a failed page.
-         */
-        /**
-         * **Empty on purpose.** Every public Lingva instance answers `/api/v1/en/ckb/...` with
-         * `{"error":"Invalid target language code"}` — measured on lingva.ml, and they all run
-         * the same code. Keeping them in the rotation cost four wasted requests per line and
-         * looked like a network fault. They stay out until an instance supports Sorani.
-         */
-        val LINGVA_INSTANCES: List<String> = emptyList()
-
         /** Hosts that failed at the transport level during this run. */
         private val deadHosts: MutableSet<String> = java.util.Collections.synchronizedSet(mutableSetOf())
 
@@ -450,14 +421,6 @@ object KeylessParsers {
             return joined.takeIf { it.isNotBlank() }
         }
         return null
-    }
-
-    /** Lingva: `{"translation":"…","info":{…}}`. */
-    fun parseLingva(body: String): String? {
-        val trimmed = body.trim()
-        if (!trimmed.startsWith("{")) return null
-        val json = runCatching { org.json.JSONObject(trimmed) }.getOrNull() ?: return null
-        return json.optString("translation").takeIf { it.isNotBlank() }
     }
 
     /** Some mirrors answer with HTML (a captcha or a consent page): never treat that as text. */

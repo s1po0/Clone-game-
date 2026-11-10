@@ -47,14 +47,18 @@ object EngineCodes {
     const val GOOGLE = "google"
 
     /**
-     * The keyless rotation: several public endpoints tried in order. This is the default,
-     * because it is the only free route into Kurdish that survives a rate limit.
+     * The keyless rotation: Google's three public endpoints tried in order. It is the default
+     * and, for Kurdish Sorani, the only route that exists. The ids below are kept only so a
+     * settings file written by an older build still loads; nothing builds an engine from them.
      */
     const val KEYLESS = "keyless"
+    @Deprecated("Google is the only engine; kept so old settings still load")
     const val MYMEMORY = "mymemory"
-    /** Microsoft's public translator: the other engine that carries a real Sorani model. */
+    @Deprecated("Microsoft refuses ckb with HTTP 400; kept so old settings still load")
     const val MICROSOFT = "microsoft"
+    @Deprecated("No published model set has Kurdish; kept so old settings still load")
     const val LIBRETRANSLATE = "libretranslate"
+    @Deprecated("Model endpoints were removed; kept so old settings still load")
     const val LLM = "openai-compatible"
 
     /** Pair used when an engine cannot reach Kurdish directly: go through Turkish. */
@@ -98,23 +102,19 @@ object Languages {
     val all: List<Language> = listOf(
         Language(
             "ja", "Japanese", "日本語", Script.JAPANESE, "japanese", vertical = true,
-            engineCodes = mapOf(EngineCodes.LLM to "ja"),
         ),
         Language("ko", "Korean", "한국어", Script.KOREAN, "korean"),
         // Kurdish (Kurmanji) reads Latin script; Sorani above reads Arabic script.
         Language(
             "zh-Hans", "Chinese (Simplified)", "简体中文", Script.CHINESE, "chinese",
-            engineCodes = mapOf(EngineCodes.LLM to "zh"),
         ),
         Language(
             "zh-Hant", "Chinese (Traditional)", "繁體中文", Script.CHINESE, "chinese",
-            engineCodes = mapOf(EngineCodes.LLM to "zh-Hant"),
         ),
         // English is free of charge on every engine, so it is also the pivot leg of last resort.
         Language("en", "English", "English", Script.LATIN, "latin"),
         Language(
             "ar", "Arabic", "العربية", Script.ARABIC, "arabic", rtl = true,
-            engineCodes = mapOf(EngineCodes.LLM to "ar"),
         ),
         Language(
             code = "ckb",
@@ -126,13 +126,9 @@ object Languages {
             ocrModel = "arabic",
             rtl = true,
             engineCodes = mapOf(
-                // Google is the only free route into Sorani, and it is the one that works.
+                // Google is the only free route into Sorani, and the only one that works.
                 EngineCodes.GOOGLE to "ckb",
                 EngineCodes.KEYLESS to "ckb",
-                EngineCodes.MICROSOFT to "ckb",
-                EngineCodes.MYMEMORY to "ckb",
-                EngineCodes.LIBRETRANSLATE to EngineCodes.NONE,
-                EngineCodes.LLM to "ckb",
             ),
         ),
         Language(
@@ -145,12 +141,7 @@ object Languages {
             ocrModel = "latin",
             engineCodes = mapOf(
                 EngineCodes.GOOGLE to "ku",
-                EngineCodes.MYMEMORY to "ku",
-                // Microsoft's `ku` is Central Kurdish (Sorani), not this language. Declaring it
-                // here would hand a Kurmanji reader Sorani text, which is a different language.
-                EngineCodes.MICROSOFT to EngineCodes.NONE,
-                EngineCodes.LIBRETRANSLATE to EngineCodes.NONE,
-                EngineCodes.LLM to "ku",
+                EngineCodes.KEYLESS to "ku",
             ),
         ),
         Language(
@@ -160,30 +151,19 @@ object Languages {
             script = Script.ARABIC,
             ocrModel = "arabic",
             rtl = true,
-            engineCodes = mapOf(EngineCodes.LLM to "fa"),
         ),
-        Language(
-            "tr", "Turkish", "Türkçe", Script.LATIN, "latin",
-            // MyMemory reaches Kurdish through Turkish, so Turkish is the pivot leg.
-            engineCodes = mapOf(
-                EngineCodes.MYMEMORY to "tr",
-                EngineCodes.LIBRETRANSLATE to "tr",
-                EngineCodes.LLM to "tr",
-            ),
-        ),
+        // The second leg of the pivot chain, for a pair Google cannot reach in one hop.
+        Language("tr", "Turkish", "Türkçe", Script.LATIN, "latin"),
         Language("fr", "French", "Français", Script.LATIN, "latin"),
         Language("de", "German", "Deutsch", Script.LATIN, "latin"),
         Language("es", "Spanish", "Español", Script.LATIN, "latin"),
         Language("it", "Italian", "Italiano", Script.LATIN, "latin"),
         Language("pt", "Portuguese", "Português", Script.LATIN, "latin"),
-        Language("ru", "Russian", "Русский", Script.CYRILLIC, "cyrillic",
-            engineCodes = mapOf(EngineCodes.LLM to "ru")),
-        Language("uk", "Ukrainian", "Українська", Script.CYRILLIC, "cyrillic",
-            engineCodes = mapOf(EngineCodes.LLM to "uk")),
+        Language("ru", "Russian", "Русский", Script.CYRILLIC, "cyrillic"),
+        Language("uk", "Ukrainian", "Українська", Script.CYRILLIC, "cyrillic"),
         Language("id", "Indonesian", "Bahasa Indonesia", Script.LATIN, "latin"),
         Language("vi", "Vietnamese", "Tiếng Việt", Script.LATIN, "latin"),
-        Language("th", "Thai", "ไทย", Script.THAI, null,
-            engineCodes = mapOf(EngineCodes.MYMEMORY to "th", EngineCodes.LLM to "th")),
+        Language("th", "Thai", "ไทย", Script.THAI, null),
         Language("hi", "Hindi", "हिन्दी", Script.DEVANAGARI, "devanagari"),
         Language("bn", "Bengali", "বাংলা", Script.DEVANAGARI, "devanagari"),
         Language("ta", "Tamil", "தமிழ்", Script.DEVANAGARI, "devanagari"),

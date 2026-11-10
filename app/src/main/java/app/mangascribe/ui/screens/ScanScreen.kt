@@ -115,10 +115,7 @@ fun ScanScreen(viewModel: LibraryViewModel) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
 
-        val advice = app.mangascribe.translate.EngineCatalog.kurdishAdvice(
-            settings.targetLanguage,
-            settings.llmApiKey.isNotBlank(),
-        )
+        val advice = app.mangascribe.translate.EngineCatalog.kurdishAdvice(settings.targetLanguage)
         if (advice != null) {
             Card(
                 colors = CardDefaults.cardColors(

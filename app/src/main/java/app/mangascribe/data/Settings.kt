@@ -132,8 +132,12 @@ class SettingsStore(private val context: Context, private val secrets: SecretSto
         )
     }
 
-    private fun migrateEngine(stored: String): String =
-        if (stored == "mymemory" || stored.isBlank()) app.mangascribe.core.EngineCodes.GOOGLE else stored
+    /**
+     * Google, whatever an older build stored. The rotation used to include MyMemory, Microsoft,
+     * a LibreTranslate server and a model endpoint; all four are gone, so a remembered id would
+     * only point at an engine that cannot be built.
+     */
+    private fun migrateEngine(stored: String): String = app.mangascribe.core.EngineCodes.GOOGLE
 
     suspend fun update(transform: (AppSettings) -> AppSettings) {
         val currentSecrets = loadSecrets()

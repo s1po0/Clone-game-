@@ -21,9 +21,6 @@ import app.mangascribe.translate.KeylessTranslateTranslator
 import app.mangascribe.translate.LineTranslator
 import app.mangascribe.translate.overlay
 import app.mangascribe.translate.Http
-import app.mangascribe.translate.LibreTranslateTranslator
-import app.mangascribe.translate.MyMemoryTranslator
-import app.mangascribe.translate.OpenAiCompatibleTranslator
 import app.mangascribe.translate.Translator
 import app.mangascribe.translate.TranslationPipeline
 import kotlinx.coroutines.Dispatchers
@@ -681,28 +678,6 @@ class LibraryRepository(
         // means a failure is diagnosable instead of a mystery spread over four hosts.
         add(KeylessTranslateTranslator(http))
         add(GoogleTranslateTranslator(http))
-        // LibreTranslate only when the user actually pointed it at a server. The public
-        // argosopentech instance is dead (its hostname no longer resolves), so shipping it as a
-        // default made every failing page end with "Unable to resolve host" — a DNS error for a
-        // service the user never chose. A blank endpoint means "not configured", not "use mine".
-        val libre = config.libreEndpoint.trim()
-        if (libre.isNotEmpty() && !libre.contains("argosopentech")) {
-            add(LibreTranslateTranslator(http, libre, config.libreApiKey.takeIf { it.isNotBlank() }))
-        }
-        // MyMemory cannot do Sorani; only added when the reader asked for it by name.
-        if (config.engineId == app.mangascribe.core.EngineCodes.MYMEMORY) {
-            add(MyMemoryTranslator(http))
-        }
-        if (config.llmApiKey.isNotBlank()) {
-            add(
-                OpenAiCompatibleTranslator(
-                    http,
-                    config.llmBaseUrl,
-                    config.llmApiKey,
-                    config.llmModel.ifBlank { "gpt-4o-mini" },
-                )
-            )
-        }
     }.map { CachedTranslator(it, translationCache) }
 
     /**

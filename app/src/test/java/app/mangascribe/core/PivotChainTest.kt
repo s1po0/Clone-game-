@@ -19,13 +19,13 @@ class PivotChainTest {
 
     @Test
     fun `english is tried before turkish`() {
-        val chain = EngineCodes.pivotChain(EngineCodes.LIBRETRANSLATE, "en", "ckb")
+        val chain = EngineCodes.pivotChain(EngineCodes.KEYLESS, "en", "ckb")
         assertTrue("got: $chain", chain.contains("en") || chain.isEmpty())
     }
 
     @Test
     fun `a pivot never repeats an end of the pair`() {
-        val chain = EngineCodes.pivotChain(EngineCodes.MYMEMORY, "ja", "ckb")
+        val chain = EngineCodes.pivotChain(EngineCodes.KEYLESS, "ja", "ckb")
         assertTrue(chain.none { it == "ja" || it == "ckb" })
     }
 

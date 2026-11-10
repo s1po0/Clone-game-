@@ -40,7 +40,7 @@ class EchoPairTest {
     @Test
     fun `a kurdish-to-kurdish pair is sent as auto instead of echoing`() = runBlocking {
         val http = EchoAwareGoogle()
-        val engine = KeylessTranslateTranslator(http, lingvaInstances = emptyList())
+        val engine = KeylessTranslateTranslator(http)
         val batch = engine.translate(listOf("what is this?"), "ckb", "ckb")
         assertTrue("expected the target language, got ${batch.lines}", batch.lines.all { it == "کوردی" })
         assertTrue(http.urls.none { it.contains("sl=ckb") })
@@ -49,7 +49,7 @@ class EchoPairTest {
     @Test
     fun `an arabic page still translates normally`() = runBlocking {
         val http = EchoAwareGoogle()
-        val engine = KeylessTranslateTranslator(http, lingvaInstances = emptyList())
+        val engine = KeylessTranslateTranslator(http)
         val batch = engine.translate(listOf("ما هذا؟"), "ar", "ckb")
         assertEquals(listOf("کوردی"), batch.lines)
     }
@@ -57,7 +57,7 @@ class EchoPairTest {
     @Test
     fun `an english page keeps its declared source`() = runBlocking {
         val http = EchoAwareGoogle()
-        KeylessTranslateTranslator(http, lingvaInstances = emptyList())
+        KeylessTranslateTranslator(http)
             .translate(listOf("hello"), "en", "ckb")
         assertTrue(http.urls.any { it.contains("sl=en") })
     }

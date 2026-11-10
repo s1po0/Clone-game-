@@ -165,7 +165,7 @@ class GoogleEngineBehaviourTest {
     fun `the pipeline falls through google to another engine`() = runBlocking {
         val google = GoogleTranslateTranslator(FakeHttp { "broken" })
         val fallback = object : app.mangascribe.translate.Translator {
-            override val id = EngineCodes.MYMEMORY
+            override val id = "fallback"
             override val displayName = "fallback"
             override val requiresNetwork = true
             override suspend fun translate(

@@ -63,7 +63,7 @@ class LiveEndpointTest {
     @Test
     fun `the translator itself returns kurdish for an english page`() {
         requireLive()
-        val engine = KeylessTranslateTranslator(OkHttpHttp(), lingvaInstances = emptyList())
+        val engine = KeylessTranslateTranslator(OkHttpHttp())
         val lines = listOf("who are you?", "what is this?", "run!")
         val batch = kotlinx.coroutines.runBlocking { engine.translate(lines, "en", "ckb") }
         println("LIVE page: ${batch.lines}")
@@ -76,7 +76,7 @@ class LiveEndpointTest {
     @Test
     fun `a kurdish page still translates onward instead of echoing`() {
         requireLive()
-        val engine = KeylessTranslateTranslator(OkHttpHttp(), lingvaInstances = emptyList())
+        val engine = KeylessTranslateTranslator(OkHttpHttp())
         val batch = kotlinx.coroutines.runBlocking {
             // the exact shape that produced an all-English page: source believed to be Kurdish
             engine.translate(listOf("what the actual fuck is this?!"), "ckb", "ckb")
@@ -89,7 +89,7 @@ class LiveEndpointTest {
     }
 
     @Test
-    fun `google dictionary and lingva routes are probed so a dead one is known`() {
+    fun `the google dictionary route is probed so a dead one is known`() {
         requireLive()
         val http = OkHttpHttp()
         val clients5 = runCatching {
@@ -107,14 +107,6 @@ class LiveEndpointTest {
                     .orEmpty().any { it in '\u0600'..'\u06FF' },
             )
         }
-        val lingva = runCatching {
-            kotlinx.coroutines.runBlocking {
-                http.get("https://lingva.ml/api/v1/en/ckb/hello")
-            }
-        }
-        println("LIVE lingva: ${lingva.getOrNull() ?: lingva.exceptionOrNull()?.message}")
-        // Not asserted: Lingva is a third-party mirror that may be down or may not know ckb.
-        // The point of probing it is that the log answers "why did the page take so long".
     }
 
     @Test

@@ -1,6 +1,5 @@
 package app.mangascribe.core
 
-import app.mangascribe.translate.ChatPrompt
 import app.mangascribe.translate.EngineCatalog
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -53,8 +52,8 @@ class KurdishLanguageTest {
 
     @Test
     fun `sorani advice does not fire for kurmanji`() {
-        assertNull(app.mangascribe.translate.EngineCatalog.kurdishAdvice("ku", hasLlmKey = false))
-        assertNotNull(app.mangascribe.translate.EngineCatalog.kurdishAdvice("ckb", hasLlmKey = false))
+        assertNull(app.mangascribe.translate.EngineCatalog.kurdishAdvice("ku"))
+        assertNotNull(app.mangascribe.translate.EngineCatalog.kurdishAdvice("ckb"))
     }
 
     @Test
@@ -104,59 +103,43 @@ class KurdishLanguageTest {
     }
 }
 
+/**
+ * Google is the only engine. These assertions used to be a table of which engine could reach
+ * Sorani; every row but Google's is now a known dead end, so the test asserts the removal
+ * instead of the matrix — a route that is gone cannot quietly come back.
+ */
 class KurdishEngineTest {
 
     @Test
-    fun `the model endpoint is the reliable kurdish route`() {
-        assertTrue(EngineCatalog.supports(EngineCodes.LLM, "en", "ckb"))
-        assertTrue(EngineCatalog.supports(EngineCodes.LLM, "ja", "ckb"))
-        assertTrue(EngineCatalog.supports(EngineCodes.LLM, "ckb", "en"))
+    fun `google reaches sorani in both directions`() {
+        assertTrue(EngineCatalog.supports(EngineCodes.KEYLESS, "en", "ckb"))
+        assertTrue(EngineCatalog.supports(EngineCodes.KEYLESS, "ja", "ckb"))
+        assertTrue(EngineCatalog.supports(EngineCodes.KEYLESS, "ckb", "en"))
     }
 
     @Test
-    fun `libretranslate has no kurdish and the catalog says so`() {
-        assertFalse(EngineCatalog.supports(EngineCodes.LIBRETRANSLATE, "ja", "ckb"))
-        // but it is fine for the common pairs
-        assertTrue(EngineCatalog.supports(EngineCodes.LIBRETRANSLATE, "ja", "en"))
+    fun `the catalog lists one engine and it is the keyless google route`() {
+        assertEquals(1, EngineCatalog.all.size)
+        assertEquals(EngineCodes.KEYLESS, EngineCatalog.all.single().id)
     }
 
     @Test
-    fun `mymemory advertises kurdish rather than silently dropping it`() {
-        assertTrue(EngineCatalog.supports(EngineCodes.MYMEMORY, "en", "ckb"))
-        assertFalse(EngineCatalog.supports(EngineCodes.MYMEMORY, "ckb", "ckb"))
+    fun `the removed engines are not offered for any pair`() {
+        assertFalse(EngineCatalog.supports(EngineCodes.LIBRETRANSLATE, "ja", "en"))
+        assertFalse(EngineCatalog.supports(EngineCodes.MYMEMORY, "en", "ckb"))
+        assertFalse(EngineCatalog.supports(EngineCodes.LLM, "en", "ckb"))
+        assertFalse(EngineCatalog.supports(EngineCodes.MICROSOFT, "en", "ckb"))
     }
 
     @Test
-    fun `capable list puts the preferred engine first`() {
-        val list = EngineCatalog.capable(EngineCodes.LLM, "en", "ckb")
-        assertEquals(EngineCodes.LLM, list.first().id)
-    }
-
-    @Test
-    fun `advice names the missing key instead of promising a translation`() {
-        val withoutKey = EngineCatalog.kurdishAdvice("ckb", hasLlmKey = false)
-        assertNotNull(withoutKey)
-        assertTrue(withoutKey!!.contains("model key"))
-        val withKey = EngineCatalog.kurdishAdvice("ckb", hasLlmKey = true)
-        assertTrue(withKey!!.contains("model endpoint"))
+    fun `advice promises nothing that needs a key`() {
+        val advice = EngineCatalog.kurdishAdvice("ckb")
+        assertNotNull(advice)
+        assertTrue(advice!!.contains("Google"))
+        assertFalse(advice.contains("model key"))
+        assertFalse(advice.contains("API key"))
         // no advice noise for a pair that just works
-        assertNull(EngineCatalog.kurdishAdvice("en", hasLlmKey = false))
-    }
-
-    @Test
-    fun `the prompt asks for sorani in its own letters, not kurmanji`() {
-        val instruction = ChatPrompt.languageInstruction(Languages.of("ckb"))
-        assertTrue(instruction.contains("Sorani"))
-        assertTrue(instruction.contains("پ ژ گ چ"))
-        // the prompt must rule out Kurmanji explicitly
-        assertTrue(instruction.contains("never"))
-    }
-
-    @Test
-    fun `kurdish source is named the same way in the other direction`() {
-        val instruction = ChatPrompt.languageInstruction(Languages.of("ckb"))
-        val prompt = ChatPrompt.build(instruction, "English (English)", listOf("سڵاو"))
-        assertTrue(prompt.contains("1. سڵاو"))
+        assertNull(EngineCatalog.kurdishAdvice("en"))
     }
 }
 

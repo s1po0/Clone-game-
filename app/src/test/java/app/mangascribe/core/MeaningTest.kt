@@ -38,10 +38,7 @@ class MeaningTest {
     fun `a wrong declared source is retried as auto instead of echoing`() = runBlocking {
         // The page is English but the app believes it is Kurdish. The engine echoes the
         // declared pair; the retry must switch to auto and get a real translation.
-        val engine = KeylessTranslateTranslator(
-            Endpoint { "لایەن: کۆیلەی پەرستگا" },
-            lingvaInstances = emptyList(),
-        )
+        val engine = KeylessTranslateTranslator(Endpoint { "لایەن: کۆیلەی پەرستگا" })
         val result = LineTranslator(listOf(engine), engine.id) {}.translate(
             listOf("ASPECT: TEMPLE SLAVE"),
             "ckb",

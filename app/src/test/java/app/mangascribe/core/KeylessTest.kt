@@ -40,12 +40,6 @@ class KeylessParsersTest {
     }
 
     @Test
-    fun `lingva answers with a translation field`() {
-        val body = """{"translation":"چی؟!","info":{"detectedSource":"en"}}"""
-        assertEquals("چی؟!", KeylessParsers.parseLingva(body))
-    }
-
-    @Test
     fun `a captcha or consent page is recognised instead of being read as text`() {
         assertTrue(KeylessParsers.looksLikeHtml("<!DOCTYPE html><html>…"))
         assertTrue(KeylessParsers.looksLikeHtml("  <html><body>captcha</body></html>"))
@@ -55,7 +49,6 @@ class KeylessParsersTest {
 
     @Test
     fun `garbage is not a translation`() {
-        assertNull(KeylessParsers.parseLingva("not json"))
         assertNull(KeylessParsers.parseClients5(""))
     }
 }
@@ -90,23 +83,23 @@ class KeylessRotationTest {
                 "clients5.google.com" to { """{"sentences":[{"trans":"چی؟!"}]}""" },
             )
         )
-        val engine = KeylessTranslateTranslator(http, lingvaInstances = emptyList())
+        val engine = KeylessTranslateTranslator(http)
         val batch = engine.translate(listOf("What?!"), "en", "ckb")
         assertEquals(listOf("چی؟!"), batch.lines)
         assertTrue(http.calls.any { it.contains("clients5.google.com") })
     }
 
     @Test
-    fun `a blocking network does not stop a mirror from answering`() = runBlocking {
+    fun `one blocked google host does not stop the page`() = runBlocking {
         HostHealth.reset()
         KeylessTranslateTranslator.resetHosts()
         val http = HostFake(
-            mapOf("lingva.example" to { """{"translation":"ڕابە!"}""" })
+            mapOf(
+                "translate.googleapis.com" to { throw java.net.UnknownHostException("blocked") },
+                "clients5.google.com" to { """{"sentences":[{"trans":"ڕابە!"}]}""" },
+            )
         )
-        val engine = KeylessTranslateTranslator(
-            http,
-            lingvaInstances = listOf("https://lingva.example"),
-        )
+        val engine = KeylessTranslateTranslator(http)
         val batch = engine.translate(listOf("Run!"), "en", "ckb")
         assertEquals(listOf("ڕابە!"), batch.lines)
     }
@@ -115,8 +108,13 @@ class KeylessRotationTest {
     fun `a dead host is not retried for the rest of the run`() = runBlocking {
         HostHealth.reset()
         KeylessTranslateTranslator.resetHosts()
-        val http = HostFake(mapOf("lingva.example" to { """{"translation":"باشە"}""" }))
-        val engine = KeylessTranslateTranslator(http, lingvaInstances = listOf("https://lingva.example"))
+        val http = HostFake(
+            mapOf(
+                "translate.googleapis.com" to { throw java.net.UnknownHostException("blocked") },
+                "clients5.google.com" to { """{"sentences":[{"trans":"باشە"}]}""" },
+            )
+        )
+        val engine = KeylessTranslateTranslator(http)
         engine.translate(listOf("one"), "en", "ckb")
         val firstRound = http.calls.size
         engine.translate(listOf("two"), "en", "ckb")
@@ -129,7 +127,7 @@ class KeylessRotationTest {
     fun `every host failing is an actionable message, not a DNS string`() = runBlocking {
         HostHealth.reset()
         KeylessTranslateTranslator.resetHosts()
-        val engine = KeylessTranslateTranslator(HostFake(emptyMap()), lingvaInstances = emptyList())
+        val engine = KeylessTranslateTranslator(HostFake(emptyMap()))
         val error = runCatching { engine.translate(listOf("What?!"), "en", "ckb") }.exceptionOrNull()
         val message = error?.message.orEmpty()
         assertTrue("got: $message", message.contains("free endpoint", ignoreCase = true))
@@ -144,7 +142,7 @@ class KeylessRotationTest {
         val http = HostFake(mapOf("translate.googleapis.com" to {
             """[[["سڵاو","Hello",null,null,1]]]"""
         }))
-        val engine = KeylessTranslateTranslator(http, lingvaInstances = emptyList())
+        val engine = KeylessTranslateTranslator(http)
         assertEquals("ckb", engine.codeFor(Languages.of("ckb")))
         val batch = TranslationPipeline(listOf(engine), engine.id)
             .translate(listOf("Hello"), "en", "ckb")

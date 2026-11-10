@@ -14,7 +14,7 @@ import kotlinx.coroutines.runBlocking
 object LiveReport {
     @JvmStatic
     fun main(args: Array<String>) {
-        val engine = KeylessTranslateTranslator(OkHttpHttp(), lingvaInstances = emptyList())
+        val engine = KeylessTranslateTranslator(OkHttpHttp())
         val page = listOf(
             "Aspect: Temple Slave",
             "description: a slave is a useless wretch with no notable skills or abilities",

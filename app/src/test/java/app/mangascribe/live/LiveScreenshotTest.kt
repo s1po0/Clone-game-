@@ -39,7 +39,7 @@ class LiveScreenshotTest {
     fun `the real page is translated, not transliterated`() {
         assumeTrue(live)
         listOf("en", "auto").forEach { source ->
-            val engine = KeylessTranslateTranslator(OkHttpHttp(), lingvaInstances = emptyList())
+            val engine = KeylessTranslateTranslator(OkHttpHttp())
             val batch = runBlocking { engine.translate(page, source, "ckb") }
             println("RAW-$source (engine answered):")
             batch.lines.forEach { println("   $it") }
@@ -62,7 +62,7 @@ class LiveScreenshotTest {
     @Test
     fun `each line alone, the way the retry sends it`() {
         assumeTrue(live)
-        val engine = KeylessTranslateTranslator(OkHttpHttp(), lingvaInstances = emptyList())
+        val engine = KeylessTranslateTranslator(OkHttpHttp())
         page.forEach { line ->
             val one = runBlocking { engine.translate(listOf(line), "en", "ckb") }
             println("ONE | ${line.take(40)}")
