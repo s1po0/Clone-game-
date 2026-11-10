@@ -36,8 +36,15 @@ class TranslationCache(context: Context) {
         }
 
         override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
-            db.execSQL("DROP TABLE IF EXISTS t")
-            onCreate(db)
+            // v2: answers written before the no-English rules are still in here. A cached
+            // half-English line was replayed on every retranslate, so fixing the translator
+            // changed nothing on screen — the same bubble came back from the cache. Wipe once.
+            if (oldVersion < 2) {
+                db.execSQL("DELETE FROM t")
+            } else {
+                db.execSQL("DROP TABLE IF EXISTS t")
+                onCreate(db)
+            }
         }
     }
 
@@ -117,7 +124,14 @@ class TranslationCache(context: Context) {
 
     companion object {
         private const val NAME = "translations-cache.db"
-        private const val VERSION = 1
+        /**
+         * Bumped when a rule changes what an answer should look like. The cache key cannot carry
+         * a rule version without losing every hit on every release, so the table is emptied once
+         * per bump instead: a stale answer is worse than a fresh request.
+         *
+         *  2 — no Latin left in a Kurdish line; transliteration fallback; glossary term rewriting
+         */
+        private const val VERSION = 2
         /** ~60k short lines: a few MB, and far more than a long series repeats. */
         private const val MAX_ROWS = 60_000
 

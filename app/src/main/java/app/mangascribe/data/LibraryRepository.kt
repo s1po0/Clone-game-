@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.net.Uri
 import app.mangascribe.core.Languages
+import app.mangascribe.core.TranslatedTextCleanup
 import app.mangascribe.core.TextBlock
 import app.mangascribe.ocr.ImageSource
 import app.mangascribe.ocr.MlKitOcrEngine
@@ -428,7 +429,62 @@ class LibraryRepository(
 
     suspend fun pageBalloons(pageId: Long): List<Balloon> {
         val page = dao.pageById(pageId) ?: return emptyList()
-        return BalloonCodec.decode(page.blocksJson)
+        val balloons = BalloonCodec.decode(page.blocksJson)
+        val target = languagesFor(page)
+        return if (target.second.rtl) refreshStaleBalloons(pageId, balloons, target.first, target.second.code)
+        else balloons
+    }
+
+    /**
+     * A page translated by an older build keeps its old, half-English text in the database.
+     * Those balloons were saved once and never looked at again — which is why fixing the
+     * translator changed nothing on the phone: the same stored English was drawn.
+     *
+     * Here, on read, any stored line that still fails the no-leftover test is put through the
+     * current pipeline together with its source. A transliterated line and a clean Kurdish line
+     * are left alone, so this costs nothing on a healthy page and repairs an old one once.
+     */
+    private suspend fun refreshStaleBalloons(
+        pageId: Long,
+        balloons: List<Balloon>,
+        sourceLanguage: String,
+        targetLanguage: String,
+    ): List<Balloon> {
+        val stale = balloons.withIndex().filter { (_, balloon) ->
+            balloon.sourceText.isNotBlank() &&
+                balloon.translatedText.isNotBlank() &&
+                TranslatedTextCleanup.hasLeftoverSource(
+                    balloon.translatedText,
+                    balloon.sourceText,
+                    targetIsRtl = true,
+                )
+        }
+        if (stale.isEmpty()) return balloons
+
+        val repaired = runCatching {
+            val texts = stale.map { it.value.sourceText }
+            val config = settings.current()
+            val lines = translateLines(texts, sourceLanguage, targetLanguage, config)
+            lines.lines
+        }.getOrNull() ?: return balloons
+
+        val updated = balloons.toMutableList()
+        stale.forEachIndexed { position, entry ->
+            val fresh = repaired.getOrNull(position) ?: return@forEachIndexed
+            updated[entry.index] = entry.value.copy(translatedText = fresh)
+        }
+        // Same ids, same geometry: only the text is replaced.
+        saveBalloons(pageId, updated.map { it.copy() })
+        return updated
+    }
+
+    /** Source and target for a page, following the book and the current settings. */
+    private suspend fun languagesFor(page: PageEntity): Pair<String, app.mangascribe.core.Language> {
+        val book = dao.find(page.bookId)
+        val config = settings.current()
+        val source = book?.sourceLanguage?.takeIf { it.isNotBlank() } ?: config.sourceLanguage
+        val target = book?.targetLanguage?.takeIf { it.isNotBlank() } ?: config.targetLanguage
+        return source to Languages.of(target)
     }
 
     /**

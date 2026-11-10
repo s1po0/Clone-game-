@@ -67,8 +67,17 @@ object TranslatedTextCleanup {
             if (!word.all { it in 'A'..'Z' || it in 'a'..'z' }) continue
             if (word.lowercase() in sourceWords) return true
         }
-        return false
+        // A line made only of punctuation is not translated text, it is a leftover. In the
+        // reported page the engine answered "what the !؟ actual fuck is this?!" with "!؟" —
+        // a line with no letters passes every word test, so it survived and was drawn.
+        return !targetHasAnyLetter(translated) && sourceHasAnyLetter(source)
     }
+
+    /** True when the text contains at least one letter of any script. */
+    fun targetHasAnyLetter(text: String): Boolean = text.any { it.isLetter() }
+
+    /** True when the source contains at least one letter (so "!?" alone is not a failure). */
+    fun sourceHasAnyLetter(text: String): Boolean = text.any { it.isLetter() }
 
     /**
      * The text that should be drawn for one balloon. `null` means "nothing worth drawing":
