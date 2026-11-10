@@ -221,6 +221,15 @@ object Languages {
      */
     fun detect(text: String): String? {
         if (text.isBlank()) return null
+        // Script wins over guessing. A page whose text is *mostly Latin letters and digits* is
+        // English (or another Latin language), whatever a stray Kurdish letter says: webtoon
+        // status boxes are English, and two characters like "SL" used to tip a whole page to
+        // Kurdish, which then asked Google to translate Kurdish into Kurdish — an echo of the
+        // source, i.e. an untranslated page.
+        val letters = text.count { it.isLetter() }
+        val latinLetters = text.count { it in 'A'..'Z' || it in 'a'..'z' }
+        val arabicLetters = text.count { it in '\u0600'..'\u06FF' }
+        if (letters > 0 && latinLetters >= 3 && latinLetters > arabicLetters * 3) return "en"
         if (OcrCleanup.looksKurdish(text)) return "ckb"
         if (OcrCleanup.looksKurmanji(text)) return "ku"
         val hasKana = text.any { it in '\u3040'..'\u30FF' }

@@ -87,8 +87,14 @@ class KeylessTranslateTranslator(
     ): TranslationBatch {
         val source = Languages.of(sourceLanguage)
         val target = Languages.of(targetLanguage)
-        val sl = codeFor(source) ?: throw UnsupportedPairException(sourceLanguage, targetLanguage, listOf(id))
         val tl = codeFor(target) ?: throw UnsupportedPairException(sourceLanguage, targetLanguage, listOf(id))
+        // `sl == tl` makes Google return the input untouched — no error, no translation. That is
+        // how a whole page came back in English after OCR mis-detected the source as Kurdish, and
+        // why Arabic never showed the bug: an Arabic page has an Arabic source and a Kurdish
+        // target, so the pair is real. When the two match, the source is sent as `auto` and
+        // Google detects it itself, which is what the working scripts do.
+        val declared = codeFor(source)
+        val sl = if (declared == null || declared == tl) "auto" else declared
 
         val failures = mutableListOf<String>()
         val unreachable = java.util.Collections.synchronizedSet(mutableSetOf<String>())
