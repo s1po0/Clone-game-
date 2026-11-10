@@ -1,9 +1,5 @@
 == exit summary ==
-e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/translate/KeylessTranslator.kt:79:36 Unresolved reference 'launch'.
-e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/translate/KeylessTranslator.kt:80:26 Suspension functions can only be called within coroutine body.
-e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/translate/KeylessTranslator.kt:81:39 Suspension functions can only be called within coroutine body.
-e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/translate/KeylessTranslator.kt:91:32 Unresolved reference 'join'.
-e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/translate/KeylessTranslator.kt:180:9 Modifier 'const' is not applicable to 'local variable'.
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ocr/OcrQuality.kt:51:63 None of the following candidates is applicable:
 FAILURE: Build failed with an exception.
 * What went wrong:
 Caused by: org.gradle.workers.internal.DefaultWorkerExecutor$WorkExecutionException: A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction
@@ -88,5 +84,5 @@ Caused by: org.jetbrains.kotlin.gradle.tasks.CompilationErrorException: Compilat
 	... 2 more
 
 
-BUILD FAILED in 29s
+BUILD FAILED in 36s
 16 actionable tasks: 10 executed, 6 from cache
