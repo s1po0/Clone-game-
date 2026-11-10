@@ -55,8 +55,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.mangascribe.core.ReadingLayout
 import app.mangascribe.core.ReadingMode
-import app.mangascribe.data.AppSettings
-import app.mangascribe.core.ReadingMode
 import app.mangascribe.data.Balloon
 import app.mangascribe.data.PageEntity
 import app.mangascribe.ui.components.TranslatedPage

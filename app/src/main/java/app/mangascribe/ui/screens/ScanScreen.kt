@@ -239,6 +239,7 @@ fun ScanScreen(viewModel: LibraryViewModel) {
     }
 
     // The whole batch of the newest book: rows first, balloons as each page finishes.
+    val translating by viewModel.translating.collectAsStateWithLifecycle()
     LaunchedEffect(bookId, translating) {
         val id = bookId ?: return@LaunchedEffect
         viewModel.pagesSnapshot(id) { rows ->
@@ -257,7 +258,6 @@ fun ScanScreen(viewModel: LibraryViewModel) {
     }
 
     // Re-read the page row and its balloons when translation finishes.
-    val translating by viewModel.translating.collectAsStateWithLifecycle()
     LaunchedEffect(translating, bookId) {
         val id = bookId ?: return@LaunchedEffect
         if (translating != null) return@LaunchedEffect
