@@ -362,6 +362,34 @@ class LibraryRepository(
         dao.update(book.copy(pageCount = count, updatedAt = System.currentTimeMillis()))
     }
 
+    /** Whole library → one zip, for moving to a new phone or a differently-signed build. */
+    suspend fun exportBackup(): Uri? = withContext(Dispatchers.IO) {
+        runCatching {
+            val dir = File(context.cacheDir, "backups").apply { mkdirs() }
+            val file = File(dir, "mangascribe-backup-${System.currentTimeMillis()}.zip")
+            val result = UpgradeHelper.exportLibrary(context, file)
+            lastBackupSummary = "${result.books} book(s), ${result.pages} page(s)"
+            ExportProvider.uriFor(context, result.file)
+        }.getOrNull()
+    }
+
+    /** Restore a backup zip; the caller must restart the app afterwards. */
+    suspend fun importBackup(uri: Uri): Boolean = withContext(Dispatchers.IO) {
+        runCatching {
+            val temp = File(context.cacheDir, "restore-${System.currentTimeMillis()}.zip")
+            context.contentResolver.openInputStream(uri)?.use { input ->
+                temp.outputStream().use { output -> input.copyTo(output) }
+            } ?: return@runCatching false
+            val ok = UpgradeHelper.restoreLibrary(context, temp)
+            temp.delete()
+            ok
+        }.getOrDefault(false)
+    }
+
+    @Volatile
+    var lastBackupSummary: String? = null
+        private set
+
     suspend fun setLastPage(bookId: Long, index: Int) = dao.setLastPage(bookId, index)
     suspend fun toggleFavorite(bookId: Long) = dao.toggleFavorite(bookId)
     suspend fun bookByPage(pageId: Long): BookEntity? =

@@ -95,8 +95,22 @@ Every push to this branch builds a debug APK on GitHub Actions and publishes it 
 Install: download on the phone, tap the file, allow *Install unknown apps* for the browser or
 file manager if Android asks, then install. Android 8.0 (API 26) or newer.
 
-The build is debug-signed, not Play-Store-signed: fine for your own device and for testing,
-not for publishing. It calls MyMemory and any model endpoint you configure, so it needs internet.
+### Updates install over the old build
+
+Every APK from build 18 on is signed with **the same key** (`build-support/mangascribe-release.p12`)
+and carries an increasing `versionCode` (the workflow run number), and the application id is the
+same. So installing a new APK **replaces** the old one and keeps your library, translations and
+saved keys. Do not uninstall first.
+
+Builds before that were debug-signed with a fresh key each time and used the id
+`app.mangascribe.debug`, so they could never update each other — Android saw a different app.
+If you have one of those installed, it stays behind as a second icon; back the library up in
+**Settings → Backup and moving to a new build**, install this build, then restore. Then uninstall
+the old one.
+
+The key in the repository is the app's identity, not a secret to guard from yourself — but keep
+it: replacing it restarts the problem above. Replace it with your own key before publishing, and
+never lose the replacement.
 
 ## Keys (tokens) — where they live and why they survive
 

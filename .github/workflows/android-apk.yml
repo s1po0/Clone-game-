@@ -63,6 +63,13 @@ jobs:
           } > out/diagnostics.txt
           wc -l out/diagnostics.txt
 
+      # versionCode must go up for every build or Android refuses the update. The run number is
+      # monotonic and unique, so it is the version code; the git SHA names the build.
+      - name: Stamp version
+        run: |
+          sed -i "s/^        versionCode = .*/        versionCode = ${GITHUB_RUN_NUMBER}/" app/build.gradle.kts
+          grep -n "versionCode" app/build.gradle.kts
+
       - name: Unit tests
         run: ./gradlew :app:testDebugUnitTest --no-daemon --stacktrace 2>&1 | tee build-test.log
 
@@ -94,17 +101,29 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           ls -lh out/*.apk
+          # The same key signs every build (build-support/mangascribe-release.p12), so this
+          # installs straight over the previous one and keeps the user's library.
+          APK=$(ls out/*arm64-v8a*.apk 2>/dev/null | head -1)
+          if [ -n "$APK" ] && [ -x "${ANDROID_HOME}/build-tools/35.0.0/apksigner" ]; then
+            "${ANDROID_HOME}/build-tools/35.0.0/apksigner" verify --print-certs "$APK" \
+              | head -4 >> "$GITHUB_STEP_SUMMARY" || true
+          fi
           TAG="apk-${GITHUB_RUN_NUMBER}"
           # every split plus the universal one: the phone picks the smallest that fits
           gh release create "$TAG" out/*.apk \
             --title "MangaScribe APK (build ${GITHUB_RUN_NUMBER})" \
-            --notes "Debug APK built from \`${GITHUB_SHA:0:7}\` on ${GITHUB_REF_NAME}.
+            --notes "Built from \`${GITHUB_SHA:0:7}\` · versionCode ${GITHUB_RUN_NUMBER}.
 
-          Install on the phone: download the .apk, tap it, allow installing from this source, install.
-          Requires Android 8.0 (API 26) or newer. The debug build is not Play-Store signed; it is
-          meant for testing on your own device.
+          **Updates in place.** Every build is signed with the same key, and the version code
+          goes up each time, so installing this APK over the previous one keeps your library,
+          translations and saved keys — do not uninstall first, and do not install two different
+          builds at once.
 
-          Kurdish Sorani: add a model key in Settings to translate *into* Sorani, or pick Turkish." \
+          Install: download the .apk, tap it, allow installing from this source, install.
+          Requires Android 8.0 (API 26) or newer.
+
+          Google Translate is the default engine, so no key is needed. Kurdish Sorani works out
+          of the box; a model key in Settings improves tone in long dialogue." \
             --latest 2>&1 | tail -3
           gh release view "$TAG" --json url --jq .url
 

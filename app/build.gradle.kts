@@ -6,6 +6,23 @@ plugins {
     id("com.google.devtools.ksp")
 }
 
+/**
+ * The release keystore.
+ *
+ * Every debug build is signed with a fresh key, which is why Android refused to install a new
+ * build over the old one ("App not installed" / "Update not applied"). A stable key fixes that
+ * permanently: same package, same signer, increasing versionCode → a normal update that keeps
+ * the library, translations and settings.
+ *
+ * The keystore in build-support/ is a self-signed key generated for this project. It is not
+ * secret in the usual sense (it is in the repository, and every build uses it), but it IS the
+ * identity of the app: keep it, and every future build will install over the previous one.
+ * Replace it with your own before publishing, and never lose the replacement.
+ */
+val keystoreFile = rootProject.file("build-support/mangascribe-release.p12")
+val keystorePassword = System.getenv("MANGASCRIBE_KEYSTORE_PASSWORD") ?: "mangascribe"
+val keystoreAlias = System.getenv("MANGASCRIBE_KEY_ALIAS") ?: "mangascribe"
+
 android {
     namespace = "app.mangascribe"
     compileSdk = 35
@@ -14,6 +31,9 @@ android {
         applicationId = "app.mangascribe"
         minSdk = 26
         targetSdk = 35
+        // Bumped per release: Android only accepts an update whose versionCode is higher.
+        // CI overwrites this from the run number so every published APK can install over the
+        // last one without the user uninstalling anything.
         versionCode = 1
         versionName = "1.0.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -29,14 +49,37 @@ android {
         }
     }
 
+    signingConfigs {
+        create("stable") {
+            if (keystoreFile.exists()) {
+                storeFile = keystoreFile
+                storePassword = keystorePassword
+                keyAlias = keystoreAlias
+                keyPassword = keystorePassword
+                // v1 is needed for API 26 devices that predate v2's reliability; v2/v3 for the
+                // rest. Without v1 some older phones report "package appears to be corrupt".
+                enableV1Signing = true
+                enableV2Signing = true
+                enableV3Signing = true
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            // The same key as the test builds: an update replaces the installed app instead of
+            // being refused.
+            if (keystoreFile.exists()) signingConfig = signingConfigs.getByName("stable")
         }
-        debug {
-            applicationIdSuffix = ".debug"
+        // Installable builds are named "debug" for history's sake but are signed with the
+        // stable key and use the real application id, so they install over each other and
+        // keep the user's data. A separate `.debug` id would have made every build a second
+        // app that could never update the first.
+        getByName("debug") {
             versionNameSuffix = "-debug"
+            if (keystoreFile.exists()) signingConfig = signingConfigs.getByName("stable")
         }
     }
 

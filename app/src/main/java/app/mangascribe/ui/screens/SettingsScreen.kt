@@ -58,6 +58,7 @@ import app.mangascribe.vm.LibraryViewModel
 fun SettingsScreen(viewModel: LibraryViewModel) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     var showKeys by remember { mutableStateOf(false) }
+    val context = LocalContext.current
 
     Column(
         Modifier
@@ -153,6 +154,38 @@ fun SettingsScreen(viewModel: LibraryViewModel) {
             }
             if (showKeys) {
                 CredentialFields(viewModel, settings)
+            }
+        }
+
+        Section("Backup and moving to a new build") {
+            Text(
+                "A backup holds your library, the imported pages, every translation, and your " +
+                    "settings. It does not hold API keys — those are encrypted to this phone, " +
+                    "use Export keys in the engine section for those.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            val backupPicker = androidx.activity.compose.rememberLauncherForActivityResult(
+                androidx.activity.result.contract.ActivityResultContracts.OpenDocument()
+            ) { uri -> uri?.let { viewModel.importLibrary(it) } }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = {
+                    viewModel.exportLibrary { uri ->
+                        uri?.let { viewModel.shareFile(context, it, "application/zip") }
+                    }
+                }) { Text("Back up library") }
+                OutlinedButton(onClick = { backupPicker.launch(arrayOf("application/zip")) }) {
+                    Text("Restore backup")
+                }
+            }
+            if (viewModel.legacyInstallPresent()) {
+                Text(
+                    "An older MangaScribe build is still installed as a separate app (the " +
+                        "pre-update version). Back up here, install this build, then restore — " +
+                        "or uninstall the old one once you are happy.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                )
             }
         }
 

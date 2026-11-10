@@ -96,6 +96,29 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** Shares a full library backup through the system share sheet. */
+    fun exportLibrary(onReady: (Uri?) -> Unit) {
+        viewModelScope.launch {
+            val uri = repository.exportBackup()
+            if (uri == null) _toast.value = Toast("The backup could not be written")
+            else _toast.value = Toast("Backup ready: ${repository.lastBackupSummary ?: "library"}")
+            onReady(uri)
+        }
+    }
+
+    fun importLibrary(uri: Uri) {
+        viewModelScope.launch {
+            val ok = repository.importBackup(uri)
+            _toast.value = Toast(
+                if (ok) "Backup restored — close and reopen the app"
+                else "That file is not a MangaScribe backup"
+            )
+        }
+    }
+
+    fun legacyInstallPresent(): Boolean = app.mangascribe.data.UpgradeHelper
+        .isLegacyInstalled(getApplication())
+
     fun exportSecretBundle(): String? {
         val bundle = settingsStore.exportSecrets()
         if (bundle.isBlank()) {
@@ -280,10 +303,14 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** Opens the system share sheet with a file the app just wrote. */
-    fun shareFile(context: android.content.Context, uri: Uri) {
+    fun shareFile(
+        context: android.content.Context,
+        uri: Uri,
+        mimeType: String = "image/png",
+    ) {
         runCatching {
             val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
-                type = "image/png"
+                type = mimeType
                 putExtra(android.content.Intent.EXTRA_STREAM, uri)
                 addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
