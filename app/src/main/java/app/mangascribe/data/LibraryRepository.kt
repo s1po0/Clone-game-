@@ -483,7 +483,7 @@ class LibraryRepository(
                 )
             )
         }
-    }.map { CachedTranslator(it, translationCache) })
+    }.map { CachedTranslator(it, translationCache) }
 
     /**
      * Save any line that was already translated before this build's cache existed, so an old
