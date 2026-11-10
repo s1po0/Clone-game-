@@ -270,10 +270,11 @@ class LibraryRepository(
             val target = overrideTarget ?: book.targetLanguage
             val texts = prepared.map { it.text.replace("\n", " ") }
             val pipeline = TranslationPipeline(engines(config), config.engineId)
-            val batch = pipeline.translate(texts, sourceLanguage, target)
+            val batch = pipeline.translate(texts, sourceLanguage, target, deadEngines.toList())
             // The glossary wins over the engine on known lines: "What?!" and "Run!" then read
             // the same on every page of a chapter instead of drifting per request. Borrowed
             // from the Kurd-man pipeline, where it was the cheapest quality win of all.
+            deadEngines.addAll(batch.unreachable)
             val lines = Glossary.builtIn(target).overlay(texts, batch.lines)
             val balloons = prepared.mapIndexed { i, block ->
                 Balloon.from(block, lines.getOrElse(i) { block.text })
@@ -313,6 +314,7 @@ class LibraryRepository(
                 existing.map { it.sourceText.replace("\n", " ") },
                 book.sourceLanguage,
                 targetLanguage,
+                deadEngines.toList(),
             )
             val sources = existing.map { it.sourceText.replace("\n", " ") }
             val lines = Glossary.builtIn(targetLanguage).overlay(sources, batch.lines)
@@ -423,17 +425,30 @@ class LibraryRepository(
     suspend fun bookByPage(pageId: Long): BookEntity? =
         dao.pageById(pageId)?.let { dao.find(it.bookId) }
 
+    /**
+     * Engines that failed at the transport level (dead host, no route) during the current run.
+     * A chapter is dozens of pages: retrying a hostname that does not resolve on every page
+     * costs a DNS timeout each and buries the real error. Cleared when a page succeeds.
+     */
+    private val deadEngines = java.util.Collections.synchronizedSet(mutableSetOf<String>())
+
+    /** Forget dead hosts so a reader who reconnects does not need to restart the app. */
+    fun resetEngineHealth() {
+        deadEngines.clear()
+    }
+
     private fun engines(config: AppSettings): List<Translator> = buildList {
         // Google first: it is the default, and the only free engine with real Kurdish Sorani.
         add(GoogleTranslateTranslator(http))
         add(MyMemoryTranslator(http))
-        add(
-            LibreTranslateTranslator(
-                http,
-                config.libreEndpoint.ifBlank { "https://translate.argosopentech.com" },
-                config.libreApiKey.takeIf { it.isNotBlank() },
-            )
-        )
+        // LibreTranslate only when the user actually pointed it at a server. The public
+        // argosopentech instance is dead (its hostname no longer resolves), so shipping it as a
+        // default made every failing page end with "Unable to resolve host" — a DNS error for a
+        // service the user never chose. A blank endpoint means "not configured", not "use mine".
+        val libre = config.libreEndpoint.trim()
+        if (libre.isNotEmpty() && !libre.contains("argosopentech")) {
+            add(LibreTranslateTranslator(http, libre, config.libreApiKey.takeIf { it.isNotBlank() }))
+        }
         if (config.llmApiKey.isNotBlank()) {
             add(
                 OpenAiCompatibleTranslator(

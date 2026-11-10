@@ -34,7 +34,13 @@ data class AppSettings(
     val autoTranslateOnOpen: Boolean = false,
     val readerDirection: String = "auto", // auto | rtl | ltr
     val myMemoryEmail: String = "",
-    val libreEndpoint: String = "https://translate.argosopentech.com",
+    /**
+     * Empty by default: there is no public LibreTranslate instance worth hard-coding, and the
+     * one that used to be here (translate.argosopentech.com) stopped resolving, which turned a
+     * page's error message into a DNS failure for a server the user never asked for. A reader
+     * who hosts their own fills this in.
+     */
+    val libreEndpoint: String = "",
     val libreApiKey: String = "",
     val llmBaseUrl: String = "https://api.openai.com/v1",
     val llmApiKey: String = "",
@@ -109,7 +115,10 @@ class SettingsStore(private val context: Context, private val secrets: SecretSto
             readerDirection = p[Keys.direction] ?: defaults.readerDirection,
             // Credentials come from SecretStore, merged in by `flow` and `update`.
             myMemoryEmail = defaults.myMemoryEmail,
-            libreEndpoint = p[Keys.libreEndpoint] ?: defaults.libreEndpoint,
+            // Older builds wrote the dead public host into this field; treat it as unset.
+            libreEndpoint = (p[Keys.libreEndpoint] ?: defaults.libreEndpoint)
+                .takeUnless { it.contains("argosopentech") }
+                .orEmpty(),
             libreApiKey = defaults.libreApiKey,
             llmBaseUrl = p[Keys.llmBase] ?: defaults.llmBaseUrl,
             llmApiKey = defaults.llmApiKey,

@@ -58,6 +58,8 @@ data class TranslationBatch(
     val lines: List<String>,
     val engineId: String,
     val detectedSource: String? = null,
+    /** Engines that failed at the transport level on the way to [engineId]. */
+    val unreachable: List<String> = emptyList(),
 )
 
 class TranslationException(message: String, cause: Throwable? = null) : Exception(message, cause)
@@ -433,8 +435,21 @@ class TranslationPipeline(
         texts: List<String>,
         sourceLanguage: String,
         targetLanguage: String,
+    ): TranslationBatch = translate(texts, sourceLanguage, targetLanguage, emptyList())
+
+    /**
+     * [without] names engines that must not be tried: a dead host that already failed once in
+     * this batch is skipped instead of costing a DNS timeout per page. The caller decides the
+     * scope (one page, one chapter); the pipeline stays stateless.
+     */
+    suspend fun translate(
+        texts: List<String>,
+        sourceLanguage: String,
+        targetLanguage: String,
+        without: Collection<String>,
     ): TranslationBatch {
         val ordered = engines.sortedBy { if (it.id == preferred) 0 else 1 }
+            .filterNot { it.id in without }
         val capable = ordered.filter { it.supportsPair(sourceLanguage, targetLanguage) }
         val skipped = ordered.filterNot { it.supportsPair(sourceLanguage, targetLanguage) }
         if (capable.isEmpty()) {
@@ -446,6 +461,7 @@ class TranslationPipeline(
         }
         var lastError: Throwable? = null
         val tried = mutableListOf<String>()
+        val unreachable = mutableListOf<String>()
         val targetIsRtl = Languages.of(targetLanguage).rtl
         var best: TranslationBatch? = null
         for (engine in capable) {
@@ -467,18 +483,55 @@ class TranslationPipeline(
                     continue
                 }
                 if (result.lines.any { it.isNotBlank() }) {
-                    return result.copy(detectedSource = Languages.detect(texts.joinToString(" ")))
+                    return result.copy(
+                        detectedSource = Languages.detect(texts.joinToString(" ")),
+                        unreachable = unreachable,
+                    )
                 }
             } catch (t: Throwable) {
                 lastError = t
+                if (isTransportFailure(t)) unreachable += engine.id
             }
         }
         // Every engine echoed the source: give the renderer what came back (it will keep the
         // original lettering visible) rather than failing the whole page.
-        best?.let { if (it.lines.any { line -> line.isNotBlank() }) return it.copy(detectedSource = Languages.detect(texts.joinToString(" "))) }
-        val why = lastError?.message?.takeIf { it.isNotBlank() }
+        best?.let {
+            if (it.lines.any { line -> line.isNotBlank() }) {
+                return it.copy(
+                    detectedSource = Languages.detect(texts.joinToString(" ")),
+                    unreachable = unreachable,
+                )
+            }
+        }
+        val why = explain(lastError)
             ?: UnsupportedPairException(sourceLanguage, targetLanguage, tried).message.orEmpty()
         throw TranslationException(why, lastError)
+    }
+
+    /**
+     * Turns the transport-level failures a phone actually produces into a sentence a reader can
+     * act on. "Unable to resolve host translate.argosopentech.com" is accurate and useless: the
+     * reader did not choose that host, and the fix is either a network or another engine.
+     */
+    private fun isTransportFailure(error: Throwable): Boolean =
+        error is java.net.UnknownHostException ||
+            error is java.net.SocketTimeoutException ||
+            error is java.net.ConnectException
+
+    private fun explain(error: Throwable?): String? {
+        val message = error?.message?.takeIf { it.isNotBlank() } ?: return null
+        val dead = error is java.net.UnknownHostException ||
+            message.contains("Unable to resolve host", ignoreCase = true)
+        val offline = error is java.net.SocketTimeoutException ||
+            message.contains("timeout", ignoreCase = true) ||
+            message.contains("Failed to connect", ignoreCase = true)
+        return when {
+            dead -> "No connection to the translation server ($message). Check the phone's " +
+                "internet, or pick a different engine in Settings."
+            offline -> "The translation server did not answer in time. Check the connection and " +
+                "try again — the page keeps its place."
+            else -> message
+        }
     }
 
     fun engineNames(): List<String> = engines.map { it.displayName }

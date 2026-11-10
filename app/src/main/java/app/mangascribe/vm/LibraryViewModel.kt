@@ -228,8 +228,12 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
     }
 
+    /** A manual retry is also a chance for a host that was down to come back. */
+    private fun refreshEngines() = repository.resetEngineHealth()
+
     fun translatePage(bookId: Long, index: Int, onDone: (Balloon?, String?) -> Unit = { _, _ -> }) {
         if (_translating.value != null) return
+        refreshEngines()
         viewModelScope.launch {
             _translating.value = "Reading the page"
             runCatching { repository.translatePage(bookId, index) }

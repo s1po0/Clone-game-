@@ -41,6 +41,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.ui.platform.LocalContext
+import app.mangascribe.BuildConfig
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
@@ -198,9 +199,32 @@ fun SettingsScreen(viewModel: LibraryViewModel) {
             )
         }
 
+        // "Did the update install?" should be answerable without guessing: the build number is
+        // the workflow run number, so it can be compared with the release page directly.
+        Section("This build") {
+            val context = LocalContext.current
+            val versionName = remember {
+                runCatching {
+                    context.packageManager.getPackageInfo(context.packageName, 0).versionName
+                }.getOrNull() ?: "—"
+            }
+            Text(
+                "MangaScribe  ·  build ${BuildConfig.VERSION_CODE}  ·  $versionName",
+                style = MaterialTheme.typography.titleMedium,
+            )
+            Text(
+                "The build number is the CI run number and only ever increases. If a release " +
+                    "page says apk-40 and this screen says build 40, the update installed. " +
+                    "Settings, library and saved keys carry over — they are not touched by an " +
+                    "update.",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
         Spacer(Modifier.height(32.dp))
         Text(
-            "MangaScribe 1.0 · built for readers, not for scanners",
+            "MangaScribe · built for readers, not for scanners",
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
