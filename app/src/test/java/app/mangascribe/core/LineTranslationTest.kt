@@ -152,3 +152,32 @@ class LineTranslatorTest {
         assertEquals("one batch only", 1, engine.calls)
     }
 }
+
+class TermTableTest {
+
+    private val glossary = Glossary.builtIn("ckb")
+
+    @Test
+    fun `a status window sentence keeps its terms in kurdish after rewriting`() {
+        val line = "Aspect description: a slave is a useless wretch with no notable skills " +
+            "or abilities"
+        val rewrite = glossary.rewriteTermsInside(line)
+        listOf("کۆیلە", "بێکەڵک", "شارەزاییەکان", "تواناییەکان").forEach {
+            assertTrue("missing $it in ${rewrite.text}", rewrite.text.contains(it))
+        }
+    }
+
+    @Test
+    fun `a longer term beats a shorter one inside it`() {
+        assertEquals("شادۆ سلەیڤ", glossary.translationFor("Shadow Slave"))
+        val rewrite = glossary.rewriteTermsInside("Shadow Slave rises")
+        assertTrue(rewrite.text.startsWith("شادۆ سلەیڤ"))
+    }
+
+    @Test
+    fun `ordinary dialogue that happens to contain a term is still handled`() {
+        val rewrite = glossary.rewriteTermsInside("the king is coming")
+        assertTrue(rewrite.text.contains("پاشا"))
+        assertFalse(rewrite.text.contains("king"))
+    }
+}
