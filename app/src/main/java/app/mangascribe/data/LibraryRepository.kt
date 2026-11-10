@@ -279,7 +279,7 @@ class LibraryRepository(
             // enough that the reader sees a reason instead of a spinner.
             val translated = withTimeoutOrNull(PAGE_TRANSLATION_BUDGET_MS) {
                 translateLines(texts, sourceLanguage, target, config)
-            } ?: throw TranslationException(
+            } ?: throw app.mangascribe.translate.TranslationException(
                 "Translation took too long (over ${PAGE_TRANSLATION_BUDGET_MS / 1000} seconds). " +
                     "The engines may be blocked on this network — check the connection, then " +
                     "tap Translate again. Anything already translated for this page is kept.",
