@@ -22,14 +22,16 @@
        FIN | وەسفکردنی لایەن: کۆیلە بەدبەختێکی بێسوودە و هیچ لێهاتوویی و توانایەکی بەرچاوی نییە. کۆیلەیەکی پەرستگا زۆر دەگمەنترە، بەڵام بە هەمان شێوە بێ بەهایە.
            | transliterated=false leftover=false
        EN  | WHAT?! WHAT THE ACTUAL FUCK IS THIS?!
-       KU  | چی؟! ئەمە چ گێلییە ڕاستەقینەکە؟!
-       FIN | چی؟! ئەمە چ گێلییە ڕاستەقینەکە؟!
+       KU  | چی؟! ئەمە چی گێلییە ڕاستەقینەکە؟!
+       FIN | چی؟! ئەمە چی گێلییە ڕاستەقینەکە؟!
            | transliterated=false leftover=false
        EN  | "THERE ARE NO USELESS ASPECTS," HUH?
        KU  | "هیچ لایەنێکی بێسوود نییە"، ها؟
        FIN | "هیچ لایەنێکی بێسوود نییە"، ها؟
            | transliterated=false leftover=false
     RAW-auto (engine answered):
-BUILD SUCCESSFUL in 1m 2s
+BUILD SUCCESSFUL in 54s
 
 == compile status ==
+e: The daemon has terminated unexpectedly on startup attempt #1 with error code: 0. The daemon process output:
+e: The daemon has terminated unexpectedly on startup attempt #2 with error code: 0. The daemon process output:
