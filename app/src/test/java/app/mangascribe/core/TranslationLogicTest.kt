@@ -24,7 +24,7 @@ class BatchPlannerTest {
         val batches = BatchPlanner.plan(List(10) { line })
         assertTrue(batches.size >= 3)
         batches.forEach { batch ->
-            val chars = batch.sumOf { 1000 }
+            val chars = batch.size * 1000
             assertTrue(chars <= BatchPlanner.MAX_CHARS_PER_REQUEST)
         }
     }
@@ -33,7 +33,7 @@ class BatchPlannerTest {
     fun `batch count respects the line budget`() {
         val batches = BatchPlanner.plan(List(120) { "line" })
         assertTrue(batches.all { it.size <= BatchPlanner.MAX_LINES_PER_REQUEST })
-        assertEquals(120, batches.sumOf { it.size })
+        assertEquals(120, batches.sumOf { batch -> batch.size })
     }
 
     @Test
