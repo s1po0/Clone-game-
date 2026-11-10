@@ -305,6 +305,15 @@ object OcrCleanup {
         if (t.length <= 3 && t.all { it.isDigit() }) return true
         val meaningful = t.count { it.isLetterOrDigit() && !it.isWhitespace() }
         if (meaningful == 0) return true
+        // Letter density: OCR reads a smear of artwork as "|||·::" or "PY-1O"; a line where most
+        // characters are not letters is not dialogue. Ported from the Kurd-man filter, which is
+        // what keeps glyph noise off a character's face in that project.
+        val letters = t.count { it.isLetter() }
+        val nonSpace = t.count { !it.isWhitespace() }
+        if (nonSpace > 0 && letters.toDouble() / nonSpace < 0.5) return true
+        // One letter repeated four or more times is texture ("IIII"), not a word.
+        val distinct = t.filter { it.isLetter() }.toSet()
+        if (letters >= 4 && distinct.size == 1) return true
         return looksLikeArtworkLettering(t)
     }
 

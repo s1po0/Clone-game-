@@ -52,6 +52,8 @@ class SoraniRouteTest {
         val batch: TranslationBatch = engine.translate(lines, "en", "ckb")
 
         assertEquals(1, http.maxInFlight)
+        // The whole page is one request now, not one per line.
+        assertEquals(1, http.seen.size)
         assertTrue(
             "expected Kurdish, got: ${batch.lines}",
             batch.lines.all { line -> line.any { it in '\u0600'..'\u06FF' } },

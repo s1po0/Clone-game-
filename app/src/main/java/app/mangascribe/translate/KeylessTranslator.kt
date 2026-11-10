@@ -90,44 +90,33 @@ class KeylessTranslateTranslator(
         val sl = codeFor(source) ?: throw UnsupportedPairException(sourceLanguage, targetLanguage, listOf(id))
         val tl = codeFor(target) ?: throw UnsupportedPairException(sourceLanguage, targetLanguage, listOf(id))
 
-        val out = texts.toMutableList()
         val failures = mutableListOf<String>()
-        var dead = emptyList<String>()
-
-        // One coroutine per line, and the semaphore lives *only* inside tryRotation.
-        //
-        // It used to be taken twice — once here and once per request — which is a deadlock with a
-        // bounded semaphore: three permits held by three lines that are each waiting for a fourth.
-        // That is exactly the "Reading the page" that never finishes. One permit per in-flight
-        // request now, no nesting.
         val unreachable = java.util.Collections.synchronizedSet(mutableSetOf<String>())
-        kotlinx.coroutines.coroutineScope {
-            val jobs = texts.mapIndexed { index, raw ->
-                val line = raw.trim()
-                if (line.isEmpty()) return@mapIndexed null
-                launch {
-                    val attempt = tryRotation(line, sl, tl)
-                    if (attempt.text != null) {
-                        out[index] = attempt.text
-                    } else {
-                        synchronized(failures) { failures += attempt.reason ?: "no answer" }
-                    }
-                    unreachable.addAll(attempt.dead)
-                }
-            }
-            jobs.forEach { it?.join() }
-        }
-        dead = unreachable.toList()
 
-        if (out.indices.all { out[it] == texts[it] } && texts.any { it.isNotBlank() }) {
-            throw TranslationException(
-                "Every free endpoint failed (${failures.firstOrNull() ?: "no answer"}). " +
-                    "This usually means the phone's network is blocking them, or all mirrors " +
-                    "are rate-limited right now — wait a minute and retry, or add a key in " +
-                    "Settings for an engine that cannot be rate-limited.",
-            )
+        // Join the page into ONE request when it fits, split into <=1200 character chunks when it
+        // does not. The working script translates 1200 characters per request and pauses 400 ms;
+        // a request per line tripled the rate-limit exposure for no gain.
+        val packed = PackedLines.pack(texts)
+        if (packed.requests.isNotEmpty()) {
+            val answers = packed.requests.map { chunk ->
+                val attempt = tryRotation(chunk, sl, tl)
+                if (attempt.text == null) {
+                    synchronized(failures) { failures += attempt.reason ?: "no answer" }
+                }
+                unreachable.addAll(attempt.dead)
+                attempt.text
+            }
+            val out = PackedLines.unpack(texts, packed, answers).toMutableList()
+            if (out.indices.all { out[it] == texts[it] } && texts.any { it.isNotBlank() }) {
+                throw TranslationException(
+                    "Every free endpoint failed (${failures.firstOrNull() ?: "no answer"}). " +
+                        "Wait a minute and retry, or check the connection.",
+                )
+            }
+            return TranslationBatch(out, id, unreachable = unreachable.toList())
         }
-        return TranslationBatch(out, id, unreachable = dead)
+        // Nothing to translate (every line empty): an empty answer is correct, not a failure.
+        return TranslationBatch(texts, id)
     }
 
     private data class Attempt(val text: String?, val reason: String? = null, val dead: List<String> = emptyList())
@@ -276,8 +265,11 @@ class KeylessTranslateTranslator(
                     name = "Google web",
                     host = "translate.googleapis.com",
                     build = { q ->
+                        // Exactly the four parameters the working scripts send. `ie`/`oe`
+                        // look harmless and are not: the ckb route answers with the source
+                        // text when the request carries extra options.
                         "https://translate.googleapis.com/translate_a/single?client=gtx" +
-                            "&sl=$sl&tl=$tl&dt=t&ie=UTF-8&oe=UTF-8&q=$q"
+                            "&sl=$sl&tl=$tl&dt=t&q=$q"
                     },
                     headers = mapOf("User-Agent" to ua, "Accept" to "application/json"),
                     parser = { body, _ -> GoogleResponseParser.parse(body) },
@@ -360,7 +352,7 @@ class KeylessTranslateTranslator(
          * and reports that the same endpoints then "just work". 350 ms is the same idea, a little
          * faster, and it is the single most effective setting in this file.
          */
-        const val PLEASANT_DELAY_MS = 350L
+        const val PLEASANT_DELAY_MS = 400L
 
         fun resetHosts() = deadHosts.clear()
     }
