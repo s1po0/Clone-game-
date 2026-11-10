@@ -375,6 +375,12 @@ object EngineCatalog {
 
     val all: List<Entry> = listOf(
         Entry(
+            EngineCodes.KEYLESS,
+            "Free engines (no key)",
+            "Google's public endpoints plus Lingva mirrors, tried in turn. No key, no account. " +
+                "This is the default: if one endpoint is rate-limited the next one answers.",
+        ),
+        Entry(
             EngineCodes.GOOGLE,
             "Google Translate",
             "Free, no key, and the best quality of the three. The only free route into Kurdish Sorani.",
@@ -416,9 +422,10 @@ object EngineCatalog {
             "Kurdish Sorani is translated by Google Translate, with your model endpoint as the " +
                 "second choice for tone."
         } else {
-            "Kurdish Sorani works out of the box through Google Translate — no key needed. " +
-                "Add a model key only if you want better tone in long dialogue. (LibreTranslate " +
-                "has no Kurdish.)"
+            "Kurdish Sorani works out of the box through the free engines — no key needed. " +
+                "Four public endpoints are tried in turn, so a rate limit moves to the next " +
+                "one instead of failing the page. (MyMemory and LibreTranslate have no Kurdish " +
+                "at all.)"
         }
     }
 }

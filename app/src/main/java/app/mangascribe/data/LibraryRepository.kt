@@ -14,6 +14,8 @@ import app.mangascribe.translate.BatchPlanner
 import app.mangascribe.translate.CachedTranslator
 import app.mangascribe.translate.Glossary
 import app.mangascribe.translate.GoogleTranslateTranslator
+import app.mangascribe.translate.HostHealth
+import app.mangascribe.translate.KeylessTranslateTranslator
 import app.mangascribe.translate.overlay
 import app.mangascribe.translate.Http
 import app.mangascribe.translate.LibreTranslateTranslator
@@ -473,13 +475,18 @@ class LibraryRepository(
     /** Forget dead hosts so a reader who reconnects does not need to restart the app. */
     fun resetEngineHealth() {
         deadEngines.clear()
+        HostHealth.reset()
+        KeylessTranslateTranslator.resetHosts()
     }
 
     /** One cache for the whole app: a line translated on page 3 is free on page 90. */
     private val translationCache by lazy { TranslationCache(context) }
 
     private fun engines(config: AppSettings): List<Translator> = buildList {
-        // Google first: it is the default, and the only free engine with real Kurdish Sorani.
+        // The keyless rotation first: several public endpoints, so a rate-limited one does not
+        // end the page. Google (single endpoint) stays as a separate, fast first choice when the
+        // user picked it explicitly.
+        add(KeylessTranslateTranslator(http))
         add(GoogleTranslateTranslator(http))
         add(MyMemoryTranslator(http))
         // LibreTranslate only when the user actually pointed it at a server. The public

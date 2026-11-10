@@ -18,7 +18,12 @@ private val Context.dataStore by preferencesDataStore(name = "mangascribe_settin
 data class AppSettings(
     val sourceLanguage: String = "ja",
     val targetLanguage: String = "en",
-    val engineId: String = app.mangascribe.core.EngineCodes.GOOGLE,
+    /**
+     * Keyless by default. The single-endpoint Google route worked until it was rate-limited on a
+     * ten-page chapter; the keyless rotation keeps several public endpoints in reserve, which is
+     * the difference between "the page failed" and "the page took a second longer".
+     */
+    val engineId: String = app.mangascribe.core.EngineCodes.KEYLESS,
     val stripFurigana: Boolean = true,
     val mergeBlocks: Boolean = true,
     // Off by default: a white rectangle over the original lettering looks like a translation

@@ -45,6 +45,12 @@ object EngineCodes {
     const val NONE: String = "--none--"
 
     const val GOOGLE = "google"
+
+    /**
+     * The keyless rotation: several public endpoints tried in order. This is the default,
+     * because it is the only free route into Kurdish that survives a rate limit.
+     */
+    const val KEYLESS = "keyless"
     const val MYMEMORY = "mymemory"
     const val LIBRETRANSLATE = "libretranslate"
     const val LLM = "openai-compatible"
@@ -101,6 +107,7 @@ object Languages {
             engineCodes = mapOf(
                 // Google is the only free route into Sorani, and it is the one that works.
                 EngineCodes.GOOGLE to "ckb",
+                EngineCodes.KEYLESS to "ckb",
                 EngineCodes.MYMEMORY to "ckb",
                 EngineCodes.LIBRETRANSLATE to EngineCodes.NONE,
                 EngineCodes.LLM to "ckb",
