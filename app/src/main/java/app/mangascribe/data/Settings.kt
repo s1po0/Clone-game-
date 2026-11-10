@@ -29,6 +29,8 @@ data class AppSettings(
     val verticalTypesetting: Boolean = true,
     val outlineText: Boolean = false,
     val fontScale: Float = 1f,
+    /** null = pick from the page's shape (fit width for strips, one page otherwise). */
+    val readingMode: String? = null,
     val autoTranslateOnOpen: Boolean = false,
     val readerDirection: String = "auto", // auto | rtl | ltr
     val myMemoryEmail: String = "",
@@ -64,6 +66,7 @@ class SettingsStore(private val context: Context, private val secrets: SecretSto
         val vertical = booleanPreferencesKey("vertical_typeset")
         val outline = booleanPreferencesKey("outline_text")
         val fontScale = floatPreferencesKey("font_scale")
+        val readingMode = stringPreferencesKey("reading_mode")
         val autoTranslate = booleanPreferencesKey("auto_translate")
         val direction = stringPreferencesKey("reader_direction")
         val myMemoryEmail = stringPreferencesKey("mymemory_email")
@@ -101,6 +104,7 @@ class SettingsStore(private val context: Context, private val secrets: SecretSto
             verticalTypesetting = p[Keys.vertical] ?: defaults.verticalTypesetting,
             outlineText = p[Keys.outline] ?: defaults.outlineText,
             fontScale = p[Keys.fontScale] ?: defaults.fontScale,
+            readingMode = p[Keys.readingMode],
             autoTranslateOnOpen = p[Keys.autoTranslate] ?: defaults.autoTranslateOnOpen,
             readerDirection = p[Keys.direction] ?: defaults.readerDirection,
             // Credentials come from SecretStore, merged in by `flow` and `update`.
@@ -143,6 +147,7 @@ class SettingsStore(private val context: Context, private val secrets: SecretSto
             prefs[Keys.vertical] = updated.verticalTypesetting
             prefs[Keys.outline] = updated.outlineText
             prefs[Keys.fontScale] = updated.fontScale
+            updated.readingMode?.let { prefs[Keys.readingMode] = it } ?: prefs.remove(Keys.readingMode)
             prefs[Keys.autoTranslate] = updated.autoTranslateOnOpen
             prefs[Keys.direction] = updated.readerDirection
             prefs[Keys.libreEndpoint] = updated.libreEndpoint

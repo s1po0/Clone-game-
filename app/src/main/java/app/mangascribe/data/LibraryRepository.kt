@@ -299,6 +299,8 @@ class LibraryRepository(
     }
 
     /** Retranslate a page from stored OCR text — no second OCR pass, so it is quick. */
+    suspend fun pagesOf(bookId: Long): List<PageEntity> = withContext(Dispatchers.IO) { dao.pages(bookId) }
+
     suspend fun retranslatePage(pageId: Long, targetLanguage: String): List<Balloon> =
         withContext(Dispatchers.Default) {
             val page = dao.pageById(pageId) ?: error("Page is missing")

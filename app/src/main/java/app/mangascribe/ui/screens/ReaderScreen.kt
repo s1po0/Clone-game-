@@ -44,6 +44,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -53,6 +54,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.mangascribe.core.ReadingLayout
+import app.mangascribe.core.ReadingMode
+import app.mangascribe.data.AppSettings
 import app.mangascribe.core.ReadingMode
 import app.mangascribe.data.Balloon
 import app.mangascribe.data.PageEntity
@@ -82,10 +85,17 @@ fun ReaderScreen(
     var showOriginal by remember { mutableStateOf(false) }
     var editingPage by remember { mutableStateOf<PageEntity?>(null) }
     var menu by remember { mutableStateOf(false) }
-    // "Fit width" is the default for a webtoon strip: the old fixed 420 dp row clipped most of
-    // a tall page, which is why lines were unreadable without pinching. The reader can switch
-    // to one-page or zoom from the menu and the choice is remembered for the session.
-    var mode by remember(bookId) { mutableStateOf(ReadingMode.FIT_WIDTH) }
+    // Reading mode is a setting, not screen state: a webtoon reader who picks "fit width" wants
+    // it on the next chapter too. The default comes from the first page's aspect ratio, which
+    // is why a strip no longer opens in a 420 dp box with half the dialogue outside it.
+    val firstPage = pages.firstOrNull()
+    val defaultMode = remember(firstPage?.id) {
+        val aspect = if ((firstPage?.width ?: 0) > 0 && (firstPage?.height ?: 0) > 0) {
+            firstPage!!.height.toFloat() / firstPage.width
+        } else 1.4f
+        ReadingLayout.defaultFor(aspect)
+    }
+    var mode by remember(bookId) { mutableStateOf(settings.readingMode?.let(ReadingMode::valueOf) ?: defaultMode) }
 
     val listState = rememberLazyListState()
     LaunchedEffect(pages.size) {
@@ -157,7 +167,11 @@ fun ReaderScreen(
                                         fontWeight = if (option == mode) androidx.compose.ui.text.font.FontWeight.Bold else null,
                                     )
                                 },
-                                onClick = { menu = false; mode = option },
+                                onClick = {
+                                    menu = false
+                                    mode = option
+                                    viewModel.updateSettings { it.copy(readingMode = option.name) }
+                                },
                             )
                         }
                         HorizontalDivider()

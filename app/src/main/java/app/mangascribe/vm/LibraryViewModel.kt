@@ -298,6 +298,11 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** Every page of a book, once — for screens that draw the whole batch rather than a flow. */
+    fun pagesSnapshot(bookId: Long, onLoaded: (List<PageEntity>) -> Unit) {
+        viewModelScope.launch { onLoaded(repository.pagesOf(bookId)) }
+    }
+
     fun pageAt(bookId: Long, index: Int, onLoaded: (PageEntity?) -> Unit) {
         viewModelScope.launch { onLoaded(repository.pageAt(bookId, index)) }
     }

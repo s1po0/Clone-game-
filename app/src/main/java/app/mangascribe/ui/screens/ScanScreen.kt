@@ -39,6 +39,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.mangascribe.core.ReadingLayout
+import app.mangascribe.core.ReadingMode
 import app.mangascribe.data.Balloon
 import app.mangascribe.data.PageEntity
 import app.mangascribe.util.Dates
@@ -61,17 +63,26 @@ fun ScanScreen(viewModel: LibraryViewModel) {
     var engine by remember { mutableStateOf<String?>(null) }
 
     var pending by remember { mutableStateOf(false) }
+    // The batch the import produced: every page of it, translated and drawn stacked.
+    var batch by remember { mutableStateOf<List<PageEntity>>(emptyList()) }
+    val balloonsByPage = remember { androidx.compose.runtime.mutableStateMapOf<Long, List<Balloon>>() }
+    val screenWidthDp = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp.toFloat()
     // The book that was newest when the picker opened: anything else is the new import.
     var previousNewest by remember { mutableStateOf<Long?>(null) }
     val books by viewModel.books.collectAsStateWithLifecycle()
 
-    val pick = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
-        if (uri == null) return@rememberLauncherForActivityResult
+    // One screenshot or twenty pages of a chapter: the picker allows multiple selection, and
+    // the import sorts them by name so the order the user tapped is not the reading order.
+    val pick = rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris: List<Uri> ->
+        if (uris.isEmpty()) return@rememberLauncherForActivityResult
         previousNewest = books.maxByOrNull { it.createdAt }?.id
         page = null
         balloons = emptyList()
         engine = null
-        viewModel.importUris(listOf(uri), title = "Screenshot — ${Dates.shortNow()}")
+        viewModel.importUris(
+            uris,
+            title = if (uris.size == 1) "Screenshot — ${Dates.shortNow()}" else "Screens — ${Dates.shortNow()}",
+        )
         // The import is async; the books flow tells us when the new one lands.
         pending = true
     }
@@ -83,7 +94,9 @@ fun ScanScreen(viewModel: LibraryViewModel) {
         if (newest.id == previousNewest || newest.pageCount == 0) return@LaunchedEffect
         bookId = newest.id
         pending = false
-        viewModel.translatePage(newest.id, 0)
+        // Multi-page import: translate the whole batch, not just the first page.
+        if (newest.pageCount > 1) viewModel.translateWholeBook(newest.id)
+        else viewModel.translatePage(newest.id, 0)
     }
 
     Column(
@@ -137,7 +150,7 @@ fun ScanScreen(viewModel: LibraryViewModel) {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Button(onClick = { pick.launch("image/*") }) {
                 Icon(Icons.Filled.Image, contentDescription = null)
-                Text("  Pick a screenshot")
+                Text("  Pick screenshots")
             }
             OutlinedButton(
                 onClick = {
@@ -154,14 +167,36 @@ fun ScanScreen(viewModel: LibraryViewModel) {
             }
         }
 
-        if (page != null && balloons.isNotEmpty()) {
-            Card {
-                TranslatedPage(
-                    imagePath = page?.imageUri,
-                    balloons = balloons,
-                    settings = settings,
-                    modifier = Modifier.fillMaxWidth().height(520.dp),
-                )
+        if (batch.isNotEmpty()) {
+            // Every imported page, stacked and translated in place. A fixed 520 dp preview of
+            // page 1 used to be the whole screen, which hid the rest of the batch.
+            batch.forEach { row ->
+                Card {
+                    TranslatedPage(
+                        imagePath = row.imageUri,
+                        balloons = balloonsByPage[row.id].orEmpty(),
+                        settings = settings,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(
+                                ReadingLayout.scrollHeightDp(
+                                    row.width, row.height, screenWidthDp, 600f, ReadingMode.FIT_WIDTH,
+                                ).dp
+                            ),
+                    )
+                }
+                if (row.status != PageEntity.Status.DONE) {
+                    Text(
+                        when (row.status) {
+                            PageEntity.Status.NONE -> "Page ${row.index + 1} · waiting"
+                            PageEntity.Status.RUNNING -> "Page ${row.index + 1} · reading…"
+                            PageEntity.Status.FAILED -> "Page ${row.index + 1} · ${row.error ?: "failed"}"
+                            else -> ""
+                        },
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Button(onClick = {
@@ -201,6 +236,24 @@ fun ScanScreen(viewModel: LibraryViewModel) {
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+    }
+
+    // The whole batch of the newest book: rows first, balloons as each page finishes.
+    LaunchedEffect(bookId, translating) {
+        val id = bookId ?: return@LaunchedEffect
+        viewModel.pagesSnapshot(id) { rows ->
+            batch = rows
+            rows.filter { it.status == PageEntity.Status.DONE }.forEach { row ->
+                viewModel.loadBalloonsForPage(id, row.index) { loaded ->
+                    balloonsByPage[row.id] = loaded
+                    // the single-page summary below still points at the last completed page
+                    if (loaded.isNotEmpty()) {
+                        page = row
+                        balloons = loaded
+                    }
+                }
+            }
+        }
     }
 
     // Re-read the page row and its balloons when translation finishes.
