@@ -1,2 +1,7 @@
 == live endpoint test ==
-BUILD FAILED in 16s
+> Task :app:kspDebugUnitTestKotlin FAILED
+BUILD FAILED in 51s
+
+== compile status ==
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/test/java/app/mangascribe/core/GlossaryTest.kt:84:2 imports are only allowed in the beginning of file
+BUILD FAILED in 51s
