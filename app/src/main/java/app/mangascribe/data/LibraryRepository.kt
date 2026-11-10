@@ -11,7 +11,9 @@ import app.mangascribe.ocr.OcrOptions
 import app.mangascribe.render.PageRenderer
 import app.mangascribe.render.RenderStyle
 import app.mangascribe.translate.BatchPlanner
+import app.mangascribe.translate.Glossary
 import app.mangascribe.translate.GoogleTranslateTranslator
+import app.mangascribe.translate.overlay
 import app.mangascribe.translate.Http
 import app.mangascribe.translate.LibreTranslateTranslator
 import app.mangascribe.translate.MyMemoryTranslator
@@ -251,8 +253,12 @@ class LibraryRepository(
             val texts = prepared.map { it.text.replace("\n", " ") }
             val pipeline = TranslationPipeline(engines(config), config.engineId)
             val batch = pipeline.translate(texts, sourceLanguage, target)
+            // The glossary wins over the engine on known lines: "What?!" and "Run!" then read
+            // the same on every page of a chapter instead of drifting per request. Borrowed
+            // from the Kurd-man pipeline, where it was the cheapest quality win of all.
+            val lines = Glossary.builtIn(target).overlay(texts, batch.lines)
             val balloons = prepared.mapIndexed { i, block ->
-                Balloon.from(block, batch.lines.getOrElse(i) { block.text })
+                Balloon.from(block, lines.getOrElse(i) { block.text })
                     .copy(maskOriginal = config.maskOriginal)
             }
             val w = pageWidth
@@ -288,8 +294,10 @@ class LibraryRepository(
                 book.sourceLanguage,
                 targetLanguage,
             )
+            val sources = existing.map { it.sourceText.replace("\n", " ") }
+            val lines = Glossary.builtIn(targetLanguage).overlay(sources, batch.lines)
             val updated = existing.mapIndexed { i, balloon ->
-                balloon.copy(translatedText = batch.lines.getOrElse(i) { balloon.translatedText })
+                balloon.copy(translatedText = lines.getOrElse(i) { balloon.translatedText })
             }
             dao.updateBlocks(pageId, BalloonCodec.encode(updated))
             updated

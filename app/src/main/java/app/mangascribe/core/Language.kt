@@ -313,6 +313,31 @@ object OcrCleanup {
             .replace("\u0640", "") // tatweel: OCR padding inside justified Arabic script
 
     /**
+     * Undo OCR damage that turns Arabic-script letters into shapes instead of letters.
+     *
+     * Two distinct cases, both seen in the wild and both fatal to a translation:
+     *  - **Arabic Presentation Forms** (`U+FB50–FDFF`, `U+FE70–FEFF`): the isolated/initial/
+     *    medial/final shapes as separate code points. Unicode compatibility decomposition folds
+     *    them back onto their base letters, after which the platform shaper joins them properly
+     *    again; NFKC does exactly that, so no 500-entry table is hand-written here.
+     *  - **Private Use Area** (`U+E000–F8FF`): some OCR models were trained on "cmap hack"
+     *    fonts that put Kurdish/Arabic glyphs there. Those code points have no meaning outside
+     *    that font: a translator receives gibberish and the renderer draws empty boxes. They are
+     *    dropped, and the surrounding text is left intact.
+     *
+     * The check is cheap on Latin text (a single pass, no allocation) so it can run on every
+     * block before either translation or typesetting.
+     */
+    fun repairPresentationalForms(text: String): String {
+        val suspicious = text.any {
+            it in '\uFB50'..'\uFDFF' || it in '\uFE70'..'\uFEFF' || it in '\uE000'..'\uF8FF'
+        }
+        if (!suspicious) return text
+        val stripped = text.filterNot { it in '\uE000'..'\uF8FF' }
+        return java.text.Normalizer.normalize(stripped, java.text.Normalizer.Form.NFKC)
+    }
+
+    /**
      * Insert the RTL mark around runs of Latin letters and digits so mixed lines keep their
      * order when drawn: "Goku ٣" must not render as "٣ Goku" in an RTL paragraph.
      */
@@ -323,7 +348,8 @@ object OcrCleanup {
 
     /** One block's text, in reading order, cleaned for translation. */
     fun clean(raw: String, languageCode: String, stripFurigana: Boolean): String {
-        var t = repairLineBreaks(raw)
+        var t = repairPresentationalForms(raw)
+        t = repairLineBreaks(t)
         if (stripFurigana && Languages.of(languageCode).script == Script.JAPANESE) {
             t = stripFurigana(t)
         }
