@@ -98,7 +98,7 @@ jobs:
             echo "== live endpoint test =="
             ./gradlew :app:testDebugUnitTest --tests 'app.mangascribe.live.*' --rerun-tasks \
               --no-daemon --info 2>&1 | tee live-raw.txt \
-              | grep -E "LIVE |RAW-|OK: |FAIL: |EN  \||KU  \||FIN \||leftover=|SYNTH|PASSED|FAILED|tests? completed|BUILD " | head -120
+              | grep -E "LIVE |PROBE |RAW-|OK: |FAIL: |EN  \||KU  \||FIN \||leftover=|SYNTH|PASSED|FAILED|tests? completed|BUILD " | head -120
             echo
             echo "== compile status =="
             grep -E "^e: |error:|BUILD FAILED" live-raw.txt | head -20 || echo "compiled clean"
