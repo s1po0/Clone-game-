@@ -39,7 +39,7 @@ class TranslationCache(context: Context) {
             // v2: answers written before the no-English rules are still in here. A cached
             // half-English line was replayed on every retranslate, so fixing the translator
             // changed nothing on screen — the same bubble came back from the cache. Wipe once.
-            if (oldVersion < 2) {
+            if (oldVersion < 3) {
                 db.execSQL("DELETE FROM t")
             } else {
                 db.execSQL("DROP TABLE IF EXISTS t")
@@ -130,8 +130,10 @@ class TranslationCache(context: Context) {
          * per bump instead: a stale answer is worse than a fresh request.
          *
          *  2 — no Latin left in a Kurdish line; transliteration fallback; glossary term rewriting
+         *  3 — transliterations are no longer cached at all, and the ones cached under v2 were
+         *      meaningless lines that every retranslate replayed. Emptied again.
          */
-        private const val VERSION = 2
+        private const val VERSION = 3
         /** ~60k short lines: a few MB, and far more than a long series repeats. */
         private const val MAX_ROWS = 60_000
 

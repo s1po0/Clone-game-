@@ -107,12 +107,17 @@ class LineTranslator(
         targetLanguage: String,
         engineOrder: List<String>,
     ): Pair<String, String>? {
-        for (round in 0 until 2) {
+        // `auto` is the second attempt's whole point: when the declared source is wrong (OCR
+        // said Kurdish on an English page), asking again with the same wrong source just gets the
+        // same echo. The endpoint detects the language itself when told `auto`.
+        val orders = listOf(sourceLanguage, "auto").distinct()
+        for (round in orders.indices) {
+            val source = orders[round]
             for (engine in engineOrder) {
                 val candidate = engines.firstOrNull { it.id == engine } ?: continue
-                if (!candidate.supportsPair(sourceLanguage, targetLanguage)) continue
+                if (!candidate.supportsPair(source, targetLanguage)) continue
                 val attempt = runCatching {
-                    candidate.translate(listOf(text), sourceLanguage, targetLanguage)
+                    candidate.translate(listOf(text), source, targetLanguage)
                 }.getOrNull() ?: continue
                 val line = attempt.lines.firstOrNull().orEmpty()
                 if (line.isNotBlank() &&

@@ -407,7 +407,14 @@ class LibraryRepository(
                     engineId, sourceLanguage, target,
                     needEngine.mapIndexed { i, original -> texts[original] to out[original] }
                         .toMap()
-                        .filterValues { it.isNotBlank() },
+                        // A transliteration is a failure wearing a Kurdish costume. Caching it
+                        // meant that once a page failed, every retranslate of that page replayed
+                        // the same meaningless line from the translation memory — the page could
+                        // never recover, and fixing the translator changed nothing on screen.
+                        .filterValues { value -> value.isNotBlank() }
+                        .filterValues { value ->
+                            !KurdishTransliteration.isTransliterated(value)
+                        },
                 )
             }
         }
@@ -479,13 +486,16 @@ class LibraryRepository(
         targetLanguage: String,
     ): List<Balloon> {
         val stale = balloons.withIndex().filter { (_, balloon) ->
-            balloon.sourceText.isNotBlank() &&
-                balloon.translatedText.isNotBlank() &&
-                TranslatedTextCleanup.hasLeftoverSource(
-                    balloon.translatedText,
-                    balloon.sourceText,
-                    targetIsRtl = true,
-                )
+            if (balloon.sourceText.isBlank() || balloon.translatedText.isBlank()) return@filter false
+            // A transliterated line is stale by definition: it says "this could not be
+            // translated". Earlier builds stored those, so they are repaired on read even though
+            // they contain no Latin letters and pass every other test.
+            if (KurdishTransliteration.isTransliterated(balloon.translatedText)) return@filter true
+            TranslatedTextCleanup.hasLeftoverSource(
+                balloon.translatedText,
+                balloon.sourceText,
+                targetIsRtl = true,
+            )
         }
         if (stale.isEmpty()) return balloons
 
@@ -499,10 +509,14 @@ class LibraryRepository(
                 entry.value.translatedText,
             )
             updated[entry.index] = entry.value.copy(translatedText = rescued)
-            // A line that was *entirely* Latin is a real translation miss: ask the engines for
-            // it (with its source) so it can become meaning, not just sound.
-            if (KurdishTransliteration.hasLatinLetters(entry.value.translatedText) &&
-                entry.value.translatedText.none { it in '\u0600'..'\u06FF' }
+            // Two kinds of miss ask the engines for a real translation:
+            //  - a line that was entirely Latin (nothing to keep), and
+            //  - a line that was transliterated: Kurdish letters, no meaning.
+            val before = entry.value.translatedText
+            val wasTransliterated = KurdishTransliteration.isTransliterated(before)
+            if (wasTransliterated ||
+                (KurdishTransliteration.hasLatinLetters(before) &&
+                    before.none { it in '\u0600'..'\u06FF' })
             ) {
                 stillLatin += entry.index
             }
