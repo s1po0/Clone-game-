@@ -1,45 +1,25 @@
 == live endpoint test ==
-    LIVE google: سڵاو
-    LIVE echo-check: [ئەمە چییە بە گێلی ڕاستەقینە؟!]
-    LIVE clients5: ["سڵاو"]
-    LIVE lingva: HTTP 400: {
-    LIVE dj=1: {"sentences":[{"trans":"سڵاو","orig":"hello","backend":10}],"src":"en","confidence":1.0,"spell":{},"ld_result":{"srclangs":["en"],"srclangs_confidences":[1.0],"extended_srclangs":["en"]}}
-    LIVE page: [تۆ کێی؟, ئەمە چیە؟, ڕاکردن!]
-    PROBE array ckb → HTTP 400: 
-    PROBE array ckb no-ent → HTTP 400: 
-    PROBE array ckb detect → HTTP 400: 
-    PROBE array ku → [{"translations":[{"text":"سڵاو","to":"ku","sentLen":{"srcSentLen":[5],"transSentLen":[4]}}]}]
-    PROBE array en-ar → [{"translations":[{"text":"مرحبا","to":"ar","sentLen":{"srcSentLen":[5],"transSentLen":[5]}}]}]
-    PROBE v3 object ckb → HTTP 401: {"error":{"code":401001,"message":"The request is not authorized because credentials are missing or invalid."}}
-    PROBE array zh sanity → [{"translations":[{"text":"你好","to":"zh-Hans","sentLen":{"srcSentLen":[5],"transSentLen":[2]}}]}]
-    LIVE microsoft: [لایەن: کۆیلەی پەرستگا, ئەمە چیه?]
-    LIVE microsoft auto: [ڕاکە]
-    RAW-en (engine answered):
-       EN  | THEY SAY THE SPELL VALUES BALANCE AS MUCH AS CHA
-       KU  | دەڵێن بەهاکانی سپێڵ بەقەد تەحەدا هاوسەنگ دەبن.
-       FIN | دەڵێن بەهاکانی سپێڵ بەقەد تەحەدا هاوسەنگ دەبن.
-           | transliterated=false leftover=false
-       EN  | SO I SHOULD AT LEAST GET A STRONG ASPECT OUT OF 
-       KU  | کەواتە لانیکەم دەبێ لایەنێکی بەهێز لەمەوە دەربهێنم، ڕاستە؟
-       FIN | کەواتە لانیکەم دەبێ لایەنێکی بەهێز لەمەوە دەربهێنم، ڕاستە؟
-           | transliterated=false leftover=false
-       EN  | ASPECT: TEMPLE SLAVE
-       KU  | لایەن: کۆیلەی پەرستگا
-       FIN | لایەن: کۆیلەی پەرستگا
-           | transliterated=false leftover=false
-       EN  | ASPECT DESCRIPTION: A SLAVE IS A USELESS WRETCH 
-       KU  | وەسفکردنی لایەن: کۆیلە بەدبەختێکی بێسوودە و هیچ لێهاتوویی و توانایەکی بەرچاوی نییە. کۆیلەیەکی پەرستگا زۆر دەگمەنترە، بەڵام بە هەمان شێوە بێ بەهایە.
-       FIN | وەسفکردنی لایەن: کۆیلە بەدبەختێکی بێسوودە و هیچ لێهاتوویی و توانایەکی بەرچاوی نییە. کۆیلەیەکی پەرستگا زۆر دەگمەنترە، بەڵام بە هەمان شێوە بێ بەهایە.
-           | transliterated=false leftover=false
-       EN  | WHAT?! WHAT THE ACTUAL FUCK IS THIS?!
-       KU  | چی؟! ئەمە چ گێلییە ڕاستەقینەکە؟!
-       FIN | چی؟! ئەمە چ گێلییە ڕاستەقینەکە؟!
-           | transliterated=false leftover=false
-       EN  | "THERE ARE NO USELESS ASPECTS," HUH?
-       KU  | "هیچ لایەنێکی بێسوود نییە"، ها؟
-       FIN | "هیچ لایەنێکی بێسوود نییە"، ها؟
-           | transliterated=false leftover=false
-    RAW-auto (engine answered):
-BUILD SUCCESSFUL in 1m 4s
+> Task :app:compileDebugKotlin FAILED
+BUILD FAILED in 26s
 
 == compile status ==
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:64:9 Unresolved reference 'Section'.
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:65:13 @Composable invocations can only happen from the context of a @Composable function
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:66:17 Unresolved reference 'LanguagePicker'.
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:69:36 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:75:17 Unresolved reference 'LanguagePicker'.
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:78:36 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:82:13 @Composable invocations can only happen from the context of a @Composable function
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:84:39 @Composable invocations can only happen from the context of a @Composable function
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:85:39 @Composable invocations can only happen from the context of a @Composable function
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:89:9 Unresolved reference 'Section'.
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:89:37 Unresolved reference 'SliderRow'.
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:90:13 Unresolved reference 'ToggleRow'.
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:94:17 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:95:13 Unresolved reference 'ToggleRow'.
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:99:17 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:100:13 Unresolved reference 'ToggleRow'.
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:104:17 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:105:13 Unresolved reference 'SliderRow'.
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:109:30 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:113:9 Unresolved reference 'Section'.
