@@ -86,6 +86,28 @@ jobs:
           path: out/*.apk
           if-no-files-found: warn
 
+      # The APK must be reachable by anyone with the repository link, signed in or not:
+      # a GitHub release asset needs no token, and the run number keeps each build distinct.
+      - name: Publish APK as a release
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          APK=$(ls out/*.apk | head -1)
+          test -n "$APK"
+          TAG="apk-${GITHUB_RUN_NUMBER}"
+          gh release create "$TAG" "$APK" \
+            --title "MangaScribe APK (build ${GITHUB_RUN_NUMBER})" \
+            --notes "Debug APK built from \`${GITHUB_SHA:0:7}\` on ${GITHUB_REF_NAME}.
+
+          Install on the phone: download the .apk, tap it, allow installing from this source, install.
+          Requires Android 8.0 (API 26) or newer. The debug build is not Play-Store signed; it is
+          meant for testing on your own device.
+
+          Kurdish Sorani: add a model key in Settings to translate *into* Sorani, or pick Turkish." \
+            --latest 2>&1 | tail -3
+          gh release view "$TAG" --json url --jq .url
+
       # No log access from every environment, but the repository is readable from all of
       # them: a failed build commits what the compiler said to ci-diagnostics.txt.
       - name: Publish diagnostics to the branch
