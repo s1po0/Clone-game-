@@ -79,7 +79,7 @@ class LineTranslator(
             if (targetIsRtl &&
                 TranslatedTextCleanup.hasLeftoverSource(candidate, raw, targetIsRtl = true)
             ) {
-                app.mangascribe.core.KurdishTransliteration.fallbackLine(candidate)
+                app.mangascribe.core.KurdishTransliteration.rescueMixed(candidate)
             } else {
                 candidate
             }

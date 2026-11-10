@@ -65,6 +65,25 @@ object EngineCodes {
     /** Sorani specifically — the dialect with no LibreTranslate route and a strict letter set. */
     fun isSorani(code: String?): Boolean = code == "ckb" || code.equals("ku-Arab", ignoreCase = true)
 
+    /**
+     * The pivot chain for a pair: try the direct route, then go through English.
+     *
+     * English is the one language every free engine translates both ways, so it is the reliable
+     * bridge. Turkish is not: Google has no Turkish→Sorani model at all, and MyMemory's
+     * Turkish→Kurdish corpus is tiny — routing through it produced the half-English lines in the
+     * first place. English is tried first for that reason, and Turkish stays as a second leg for
+     * the rare pair that English cannot reach.
+     *
+     * Returns an empty list when the pair is direct.
+     */
+    fun pivotChain(engineId: String, from: String, to: String): List<String> {
+        if (from == to) return emptyList()
+        val src = Languages.of(from).codeFor(engineId)
+        val dst = Languages.of(to).codeFor(engineId)
+        if (src != null && src != NONE && dst != null && dst != NONE) return emptyList()
+        return listOf("en", KURDISH_PIVOT).filter { it != from && it != to }
+    }
+
     /** True when the engine has no direct route between two languages and a pivot is needed. */
     fun needsPivot(engineId: String, from: String, to: String): Boolean {
         val src = Languages.of(from).codeFor(engineId) ?: return false

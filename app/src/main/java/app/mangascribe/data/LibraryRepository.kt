@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.net.Uri
 import app.mangascribe.core.Languages
+import app.mangascribe.core.KurdishTransliteration
 import app.mangascribe.core.TranslatedTextCleanup
 import app.mangascribe.core.TextBlock
 import app.mangascribe.ocr.ImageSource
@@ -367,7 +368,17 @@ class LibraryRepository(
             engineId = result.engineId
             needEngine.forEachIndexed { i, original ->
                 val value = result.lines.getOrNull(i)?.takeIf { it.isNotBlank() }
-                if (value != null) out[original] = value
+                if (value != null) {
+                    // The engine answered, but may have left Latin words in the line. For a
+                    // Kurdish target those are written in Kurdish letters here, once, before the
+                    // text is stored — so the guarantee holds in the database too, not only on
+                    // screen.
+                    out[original] = if (Languages.of(target).rtl) {
+                        app.mangascribe.core.KurdishTransliteration.rescueMixed(value)
+                    } else {
+                        value
+                    }
+                }
             }
             // A line that never came back fully translated keeps its source text: the renderer
             // then shows the original art instead of a half-English bubble.
@@ -461,17 +472,47 @@ class LibraryRepository(
         }
         if (stale.isEmpty()) return balloons
 
-        val repaired = runCatching {
-            val texts = stale.map { it.value.sourceText }
-            val config = settings.current()
-            val lines = translateLines(texts, sourceLanguage, targetLanguage, config)
-            lines.lines
-        }.getOrNull() ?: return balloons
-
+        // Step 1, offline: any Latin words inside an otherwise Kurdish line become Kurdish
+        // letters. This is instant, needs no network, and fixes exactly the reported bubble
+        // ("ئەسپێکت: temple slave"). Nothing here can hang the reader.
         val updated = balloons.toMutableList()
-        stale.forEachIndexed { position, entry ->
-            val fresh = repaired.getOrNull(position) ?: return@forEachIndexed
-            updated[entry.index] = entry.value.copy(translatedText = fresh)
+        val stillLatin = mutableListOf<Int>()
+        stale.forEach { entry ->
+            val rescued = app.mangascribe.core.KurdishTransliteration.rescueMixed(
+                entry.value.translatedText,
+            )
+            updated[entry.index] = entry.value.copy(translatedText = rescued)
+            // A line that was *entirely* Latin is a real translation miss: ask the engines for
+            // it (with its source) so it can become meaning, not just sound.
+            if (KurdishTransliteration.hasLatinLetters(entry.value.translatedText) &&
+                entry.value.translatedText.none { it in '\u0600'..'\u06FF' }
+            ) {
+                stillLatin += entry.index
+            }
+        }
+        if (stillLatin.isEmpty()) {
+            saveBalloons(pageId, updated.map { it.copy() })
+            return updated
+        }
+
+        // Step 2, on the network: only the lines with no Kurdish at all. Wrapped in a short
+        // budget so opening an old page can never hang on an unreachable endpoint.
+        val repaired = runCatching {
+            kotlinx.coroutines.withTimeoutOrNull(20_000L) {
+                val config = settings.current()
+                translateLines(
+                    stillLatin.map { updated[it].sourceText },
+                    sourceLanguage,
+                    targetLanguage,
+                    config,
+                ).lines
+            }
+        }.getOrNull()
+        if (repaired != null) {
+            stillLatin.forEachIndexed { position, index ->
+                val fresh = repaired.getOrNull(position)?.takeIf { it.isNotBlank() }
+                if (fresh != null) updated[index] = updated[index].copy(translatedText = fresh)
+            }
         }
         // Same ids, same geometry: only the text is replaced.
         saveBalloons(pageId, updated.map { it.copy() })

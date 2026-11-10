@@ -26,8 +26,13 @@ object KurdishTransliteration {
     /** Shown at the end of a transliterated line so nobody mistakes a sound for a meaning. */
     const val MARK = " ۞"
 
-    /** True when this text was produced by [transliterate] rather than by a translator. */
-    fun isTransliterated(text: String): Boolean = text.trimEnd().endsWith(MARK.trim())
+    /**
+     * True when this text was produced by [transliterate] rather than by a translator. The marker
+     * alone is not enough: a marked line that still contains a Latin letter is not finished work,
+     * it is a rescue that half-failed.
+     */
+    fun isTransliterated(text: String): Boolean =
+        text.trimEnd().endsWith(MARK.trim()) && !hasLatinLetters(text)
 
     /**
      * Latin text → Sorani letters. Arabic script is passed through untouched, and so are digits
@@ -122,6 +127,48 @@ object KurdishTransliteration {
         }
         return out.toString()
     }
+
+    /**
+     * Rewrite **only the Latin words** of a mixed line, leaving Kurdish words, digits and
+     * punctuation alone.
+     *
+     * This is the guarantee the reader asked for: `ئەسپێکت: temple slave` becomes
+     * `ئەسپێکت: تێمپڵ سڵەیڤ`. Whatever an engine managed to translate is kept, and whatever it
+     * left in English is written in Kurdish letters instead of being drawn as Latin inside RTL
+     * text. No network, no engine: the result is always Arabic script.
+     */
+    fun rescueMixed(input: String): String {
+        if (input.isBlank()) return input
+        val out = StringBuilder(input.length + 8)
+        var i = 0
+        var changed = false
+        while (i < input.length) {
+            val c = input[i]
+            val latinStart = c in 'A'..'Z' || c in 'a'..'z'
+            if (!latinStart) {
+                out.append(c)
+                i++
+                continue
+            }
+            var end = i
+            while (end < input.length) {
+                val d = input[end]
+                if (d in 'A'..'Z' || d in 'a'..'z' || d == '\'' || d == '’') end++ else break
+            }
+            out.append(transliterate(input.substring(i, end)))
+            changed = true
+            i = end
+        }
+        if (!changed) return input
+        // A rescued line is a transliteration of whatever was left, and says so.
+        return out.toString().trimEnd() + MARK
+    }
+
+    /**
+     * True when the text holds at least one Latin letter. Used as the final gate for a Kurdish
+     * bubble: no Latin letter may be drawn in it at all.
+     */
+    fun hasLatinLetters(text: String): Boolean = text.any { it in 'A'..'Z' || it in 'a'..'z' }
 
     /**
      * The full answer for a line no engine could translate: Kurdish letters, the sound kept, and

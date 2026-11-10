@@ -87,13 +87,15 @@ object TranslatedTextCleanup {
         val target = Languages.of(targetLanguage)
         val clean = translated.trim()
         if (clean.isEmpty()) return null
-        if (target.rtl && (hasLatinResidue(clean, targetIsRtl = true) ||
-                hasLeftoverSource(clean, source, targetIsRtl = true))
-        ) {
-            // The engine echoed the source, or left words of it inside the line. Drawing that
-            // puts English in a Kurdish bubble; the original art underneath already says it.
-            return null
+        if (target.rtl) {
+            // The reader's rule, and it is absolute: a Kurdish bubble never contains a Latin
+            // letter. If an engine left one — or echoed the source — the line is rescued by
+            // writing those words in Kurdish letters, rather than being dropped or drawn as
+            // English. Only a line with nothing left in it is refused.
+            val rescued = KurdishTransliteration.rescueMixed(clean)
+            if (rescued.isBlank()) return null
+            return forRtlTarget(rescued)
         }
-        return if (target.rtl) forRtlTarget(clean) else clean
+        return clean
     }
 }
