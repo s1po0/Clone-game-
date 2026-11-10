@@ -1,6 +1,7 @@
 package app.mangascribe.live
 
 import app.mangascribe.core.KurdishTransliteration
+import app.mangascribe.core.Languages
 import app.mangascribe.core.TranslatedTextCleanup
 import app.mangascribe.translate.KeylessTranslateTranslator
 import app.mangascribe.translate.OkHttpHttp
@@ -9,49 +10,63 @@ import org.junit.Test
 import kotlinx.coroutines.runBlocking
 
 /**
- * The exact page from the reader's screenshot: a status box whose text is ghosted behind the
- * bubble, so OCR reads both layers and the engine is handed a line with the English *and* a
- * partially translated line above it.
+ * The real page, with the real reader's complaint: every bubble came back in Kurdish letters
+ * with no meaning ("هه نده كيان دروست به لام ئه مه كرده شتك بى مانا").
  *
- * The failure this reproduces: every bubble came out in Kurdish letters with no meaning — the
- * rescue path transliterated sentences the engine had failed to translate. Printing the raw
- * engine answer next to the final line shows which step lost the meaning.
+ * There are two possible causes and only the log can tell them apart:
+ *  a) the engine failed for these lines and the rescue path transliterated them, or
+ *  b) the engine answered, but the answer was thrown away.
+ *
+ * So this prints the raw engine answer next to the final line for the exact text OCR produces on
+ * that page. `ci-live-report.txt` keeps the output.
  */
 class LiveScreenshotTest {
 
     private val live = System.getenv("MANGASCRIBE_LIVE") == "1"
 
-    // What ML Kit plausibly returns on that box: the label, the body, and the ghosted art text.
+    /** What ML Kit reads on `Shadow Slave - Chapter 2 - 14.webp`, top to bottom. */
     private val page = listOf(
+        "THEY SAY THE SPELL VALUES BALANCE AS MUCH AS CHALLENGE.",
+        "SO I SHOULD AT LEAST GET A STRONG ASPECT OUT OF THIS, RIGHT?",
         "ASPECT: TEMPLE SLAVE",
         "ASPECT DESCRIPTION: A SLAVE IS A USELESS WRETCH WITH NO NOTABLE SKILLS OR ABILITIES. " +
             "A TEMPLE SLAVE IS FAR RARER, BUT JUST AS WORTHLESS.",
-        "what the !؟ actual fuck is this?!",
+        "WHAT?! WHAT THE ACTUAL FUCK IS THIS?!",
+        "\"THERE ARE NO USELESS ASPECTS,\" HUH?",
     )
 
     @Test
-    fun `the status box from the screenshot is translated, not transliterated`() {
+    fun `the real page is translated, not transliterated`() {
         assumeTrue(live)
-        val engine = KeylessTranslateTranslator(OkHttpHttp(), lingvaInstances = emptyList())
-        val batch = runBlocking { engine.translate(page, "en", "ckb") }
-        println("RAW-ENGINE:")
-        batch.lines.forEach { println("   $it") }
-        println("SYNTH:")
-        batch.lines.zip(page).forEach { (line, source) ->
-            val after = KurdishTransliteration.rescueMixed(line)
-            println("   EN  | $source")
-            println("   KU  | $line")
-            println("   FIN | $after")
-            println("       | leftover=${TranslatedTextCleanup.hasLeftoverSource(line, source, true)}")
+        listOf("en", "auto").forEach { source ->
+            val engine = KeylessTranslateTranslator(OkHttpHttp(), lingvaInstances = emptyList())
+            val batch = runBlocking { engine.translate(page, source, "ckb") }
+            println("RAW-$source (engine answered):")
+            batch.lines.forEach { println("   $it") }
+            if (source == "en") {
+                println("FINAL:")
+                batch.lines.zip(page).forEach { (line, src) ->
+                    val rescued = KurdishTransliteration.rescueMixed(line)
+                    val transliterated =
+                        KurdishTransliteration.isTransliterated(rescued)
+                    println("   EN  | ${src.take(48)}")
+                    println("   KU  | $line")
+                    println("   FIN | $rescued")
+                    println("       | transliterated=$transliterated leftover=" +
+                        TranslatedTextCleanup.hasLeftoverSource(line, src, true))
+                }
+            }
         }
     }
 
     @Test
-    fun `the same page with auto source is translated, not transliterated`() {
+    fun `each line alone, the way the retry sends it`() {
         assumeTrue(live)
         val engine = KeylessTranslateTranslator(OkHttpHttp(), lingvaInstances = emptyList())
-        val batch = runBlocking { engine.translate(page, "auto", "ckb") }
-        println("RAW-AUTO:")
-        batch.lines.forEach { println("   $it") }
+        page.forEach { line ->
+            val one = runBlocking { engine.translate(listOf(line), "en", "ckb") }
+            println("ONE | ${line.take(40)}")
+            println("  → | ${one.lines.firstOrNull()}")
+        }
     }
 }
