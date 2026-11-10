@@ -1,12 +1,37 @@
 == live endpoint test ==
-> Task :app:compileDebugKotlin FAILED
-BUILD FAILED in 27s
+    LIVE google: سڵاو
+    LIVE echo-check: [ئەمە چییە بە گێلی ڕاستەقینە؟!]
+    LIVE clients5: ["سڵاو"]
+    LIVE lingva: HTTP 400: {
+    LIVE dj=1: {"sentences":[{"trans":"سڵاو","orig":"hello","backend":10}],"src":"en","confidence":1.0,"spell":{},"ld_result":{"srclangs":["en"],"srclangs_confidences":[1.0],"extended_srclangs":["en"]}}
+    LIVE page: [تۆ کێی؟, ئەمە چیە؟, ڕاکردن!]
+    LIVE microsoft: Microsoft Translator did not answer (HTTP 404: )
+    RAW-en (engine answered):
+       EN  | THEY SAY THE SPELL VALUES BALANCE AS MUCH AS CHA
+       KU  | دەڵێن بەهاکانی سپێڵ بەقەد تەحەدا هاوسەنگ دەبن.
+       FIN | دەڵێن بەهاکانی سپێڵ بەقەد تەحەدا هاوسەنگ دەبن.
+           | transliterated=false leftover=false
+       EN  | SO I SHOULD AT LEAST GET A STRONG ASPECT OUT OF 
+       KU  | کەواتە لانیکەم دەبێ لایەنێکی بەهێز لەمەوە دەربهێنم، ڕاستە؟
+       FIN | کەواتە لانیکەم دەبێ لایەنێکی بەهێز لەمەوە دەربهێنم، ڕاستە؟
+           | transliterated=false leftover=false
+       EN  | ASPECT: TEMPLE SLAVE
+       KU  | لایەن: کۆیلەی پەرستگا
+       FIN | لایەن: کۆیلەی پەرستگا
+           | transliterated=false leftover=false
+       EN  | ASPECT DESCRIPTION: A SLAVE IS A USELESS WRETCH 
+       KU  | وەسفکردنی لایەن: کۆیلە بەدبەختێکی بێسوودە و هیچ لێهاتوویی و توانایەکی بەرچاوی نییە. کۆیلەیەکی پەرستگا زۆر دەگمەنترە، بەڵام بە هەمان شێوە بێ بەهایە.
+       FIN | وەسفکردنی لایەن: کۆیلە بەدبەختێکی بێسوودە و هیچ لێهاتوویی و توانایەکی بەرچاوی نییە. کۆیلەیەکی پەرستگا زۆر دەگمەنترە، بەڵام بە هەمان شێوە بێ بەهایە.
+           | transliterated=false leftover=false
+       EN  | WHAT?! WHAT THE ACTUAL FUCK IS THIS?!
+       KU  | چی؟! ئەمە چ گێلییە ڕاستەقینەکە؟!
+       FIN | چی؟! ئەمە چ گێلییە ڕاستەقینەکە؟!
+           | transliterated=false leftover=false
+       EN  | "THERE ARE NO USELESS ASPECTS," HUH?
+       KU  | "هیچ لایەنێکی بێسوود نییە"، ها؟
+       FIN | "هیچ لایەنێکی بێسوود نییە"، ها؟
+           | transliterated=false leftover=false
+    RAW-auto (engine answered):
+BUILD SUCCESSFUL in 1m 6s
 
 == compile status ==
-e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/translate/MicrosoftTranslator.kt:66:26 Cannot infer type for this parameter. Please specify it explicitly.
-e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/translate/MicrosoftTranslator.kt:66:38 Cannot infer type for this parameter. Please specify it explicitly.
-e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/translate/MicrosoftTranslator.kt:67:22 Unresolved reference 'withPermit'.
-e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/translate/MicrosoftTranslator.kt:68:40 Suspension functions can only be called within coroutine body.
-e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/translate/MicrosoftTranslator.kt:69:21 Suspension functions can only be called within coroutine body.
-e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/translate/MicrosoftTranslator.kt:74:30 Argument type mismatch: actual type is 'kotlin.Any', but 'kotlin.String' was expected.
-BUILD FAILED in 27s
