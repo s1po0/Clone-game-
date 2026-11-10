@@ -112,6 +112,40 @@ The key in the repository is the app's identity, not a secret to guard from your
 it: replacing it restarts the problem above. Replace it with your own key before publishing, and
 never lose the replacement.
 
+### Your own key — for Play, or just for updates
+
+You do not need Google Play to use your own key, and you do not have to use the repository's key
+either. Create one key on your own machine, keep it forever, add four GitHub secrets, and every
+build — the `.aab` for Play *and*, if you want, the sideload APK — carries your identity instead
+of the project's.
+
+Step-by-step: **[docs/play-store.md](docs/play-store.md)**. The short version:
+
+```bash
+keytool -genkeypair -v -keystore mangascribe-upload.jks \
+  -alias mangascribe -keyalg RSA -keysize 4096 -validity 10000 -storetype JKS
+```
+
+then repository → Settings → Secrets → Actions:
+
+| Secret | Value |
+|---|---|
+| `MANGASCRIBE_PLAY_KEYSTORE_BASE64` | `base64 -w0 mangascribe-upload.jks` |
+| `MANGASCRIBE_PLAY_STORE_PASSWORD` | the store password you typed |
+| `MANGASCRIBE_PLAY_KEY_ALIAS` | `mangascribe` |
+| `MANGASCRIBE_PLAY_KEY_PASSWORD` | the key password you typed |
+
+Nothing about the key is committed — `*.jks` and `*.keystore` are in `.gitignore`, and the key
+only ever exists as an environment variable inside the build job. The `apk-<n>` APKs on GitHub
+Releases stay signed with the project key so the people already using them keep getting updates;
+the `.aab` is signed with yours. Two identities, on purpose.
+
+The project key's certificate fingerprint, for checking that an install came from here:
+
+```
+SHA-256: 5f:5f:ee:f4:59:c4:76:f0:21:89:5e:5a:77:25:28:66:ef:c3:6f:c7:9d:69:b5:65:75:ab:16:bb:76:7c:6c:f4
+```
+
 ## Keys (tokens) — where they live and why they survive
 
 If you paste a model key into **Settings → Set up a model or your own server**, this is what
