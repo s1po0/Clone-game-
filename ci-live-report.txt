@@ -5,6 +5,13 @@
     LIVE lingva: HTTP 400: {
     LIVE dj=1: {"sentences":[{"trans":"سڵاو","orig":"hello","backend":10}],"src":"en","confidence":1.0,"spell":{},"ld_result":{"srclangs":["en"],"srclangs_confidences":[1.0],"extended_srclangs":["en"]}}
     LIVE page: [تۆ کێی؟, ئەمە چیە؟, ڕاکردن!]
+    PROBE array ckb → HTTP 400: 
+    PROBE array ckb no-ent → HTTP 400: 
+    PROBE array ckb detect → HTTP 400: 
+    PROBE array ku → [{"translations":[{"text":"سڵاو","to":"ku","sentLen":{"srcSentLen":[5],"transSentLen":[4]}}]}]
+    PROBE array en-ar → [{"translations":[{"text":"مرحبا","to":"ar","sentLen":{"srcSentLen":[5],"transSentLen":[5]}}]}]
+    PROBE v3 object ckb → HTTP 401: {"error":{"code":401001,"message":"The request is not authorized because credentials are missing or invalid."}}
+    PROBE array zh sanity → [{"translations":[{"text":"你好","to":"zh-Hans","sentLen":{"srcSentLen":[5],"transSentLen":[2]}}]}]
     LIVE microsoft: Microsoft Translator did not answer (HTTP 400: )
     RAW-en (engine answered):
        EN  | THEY SAY THE SPELL VALUES BALANCE AS MUCH AS CHA
@@ -32,6 +39,6 @@
        FIN | "هیچ لایەنێکی بێسوود نییە"، ها؟
            | transliterated=false leftover=false
     RAW-auto (engine answered):
-BUILD SUCCESSFUL in 49s
+BUILD SUCCESSFUL in 47s
 
 == compile status ==
