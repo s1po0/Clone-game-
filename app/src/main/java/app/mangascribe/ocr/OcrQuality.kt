@@ -48,7 +48,8 @@ object OcrQuality {
             // Length matters, but with a square root: ten short bubbles should beat one long
             // misread, and they do not if length is counted linearly.
             val weight = Math.sqrt(letters.toDouble()) * (0.4 + 0.6 * scriptShare) * (0.5 + 0.5 * confidence)
-            val punctuation = if (text.trimEnd().lastOrNull() in ".!?؟!،…") 1.08 else 1.0
+            val last = text.trimEnd().lastOrNull()
+            val punctuation = if (last != null && last in ".!?؟!،…") 1.08 else 1.0
             val junkPenalty =
                 if (letters <= 2) 0.25
                 else if (letters <= 4 && confidence < 0.55) 0.6
