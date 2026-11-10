@@ -1,3 +1,5 @@
+import java.util.Base64
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -29,7 +31,7 @@ val uploadKeystoreFile: File? = when {
         // Written into the build directory, never into the source tree, and rebuilt each time.
         val decoded = File(rootProject.layout.buildDirectory.get().asFile, "upload-key.p12")
         decoded.parentFile.mkdirs()
-        decoded.writeBytes(java.util.Base64.getMimeDecoder().decode(uploadKeystoreBase64.trim()))
+        decoded.writeBytes(Base64.getMimeDecoder().decode(uploadKeystoreBase64.trim()))
         decoded
     }
     !uploadKeystorePath.isNullOrBlank() -> File(uploadKeystorePath!!).takeIf { it.exists() }
