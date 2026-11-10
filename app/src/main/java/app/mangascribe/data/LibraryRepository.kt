@@ -11,6 +11,7 @@ import app.mangascribe.ocr.OcrOptions
 import app.mangascribe.render.PageRenderer
 import app.mangascribe.render.RenderStyle
 import app.mangascribe.translate.BatchPlanner
+import app.mangascribe.translate.GoogleTranslateTranslator
 import app.mangascribe.translate.Http
 import app.mangascribe.translate.LibreTranslateTranslator
 import app.mangascribe.translate.MyMemoryTranslator
@@ -367,6 +368,8 @@ class LibraryRepository(
         dao.pageById(pageId)?.let { dao.find(it.bookId) }
 
     private fun engines(config: AppSettings): List<Translator> = buildList {
+        // Google first: it is the default, and the only free engine with real Kurdish Sorani.
+        add(GoogleTranslateTranslator(http))
         add(MyMemoryTranslator(http))
         add(
             LibreTranslateTranslator(

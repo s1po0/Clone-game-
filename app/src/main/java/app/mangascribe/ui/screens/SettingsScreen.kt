@@ -141,8 +141,9 @@ fun SettingsScreen(viewModel: LibraryViewModel) {
             EngineRow(settings) { id -> viewModel.updateSettings { it.copy(engineId = id) } }
             KurdishCoverage(settings, viewModel)
             Text(
-                "Free engines need no account. A model endpoint gives the best dialogue and " +
-                    "keeps each balloon separate.",
+                "Google Translate is the default: no key, every language in the app, and the " +
+                    "only free engine with Kurdish Sorani. A model endpoint is better for " +
+                    "tone, names and jokes in long dialogue.",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -451,9 +452,10 @@ private fun KurdishCoverage(settings: AppSettings, viewModel: LibraryViewModel) 
 private fun EngineRow(settings: AppSettings, onSelect: (String) -> Unit) {
     var open by remember { mutableStateOf(false) }
     val engines = listOf(
-        "mymemory" to "MyMemory — free, no key",
+        app.mangascribe.core.EngineCodes.GOOGLE to "Google Translate — best quality, free, no key",
+        "openai-compatible" to "Model endpoint — best for tone, needs a key",
         "libretranslate" to "LibreTranslate — your own server",
-        "openai-compatible" to "Model endpoint — best dialogue",
+        "mymemory" to "MyMemory — free fallback, weaker quality",
     )
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         AssistChip(
@@ -464,14 +466,14 @@ private fun EngineRow(settings: AppSettings, onSelect: (String) -> Unit) {
         )
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             FilterChip(
-                selected = settings.engineId == "mymemory",
-                onClick = { onSelect("mymemory") },
-                label = { Text("Free") },
+                selected = settings.engineId == app.mangascribe.core.EngineCodes.GOOGLE,
+                onClick = { onSelect(app.mangascribe.core.EngineCodes.GOOGLE) },
+                label = { Text("Google") },
             )
             FilterChip(
                 selected = settings.engineId == "openai-compatible",
                 onClick = { onSelect("openai-compatible") },
-                label = { Text("Best") },
+                label = { Text("Model") },
             )
         }
         Icon(Icons.Filled.ArrowForward, contentDescription = null)

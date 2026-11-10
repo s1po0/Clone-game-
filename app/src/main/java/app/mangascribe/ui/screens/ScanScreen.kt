@@ -178,12 +178,16 @@ fun ScanScreen(viewModel: LibraryViewModel) {
             }
         } else if (page?.status == PageEntity.Status.FAILED) {
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
-                Text(
-                    page?.error ?: "The page could not be translated",
-                    modifier = Modifier.padding(14.dp),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onErrorContainer,
-                )
+                Column(Modifier.padding(14.dp)) {
+                    Text(
+                        page?.error ?: "The page could not be translated",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                    )
+                    TextButton(onClick = {
+                        bookId?.let { viewModel.translatePage(it, 0) }
+                    }) { Text("Try again") }
+                }
             }
         } else if (page?.status == PageEntity.Status.DONE) {
             Box(Modifier.fillMaxWidth().height(160.dp), contentAlignment = Alignment.Center) {

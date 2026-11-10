@@ -44,6 +44,7 @@ object EngineCodes {
     /** Sentinel: the engine has no code for this language at all. */
     const val NONE: String = "--none--"
 
+    const val GOOGLE = "google"
     const val MYMEMORY = "mymemory"
     const val LIBRETRANSLATE = "libretranslate"
     const val LLM = "openai-compatible"
@@ -98,6 +99,8 @@ object Languages {
             ocrModel = "arabic",
             rtl = true,
             engineCodes = mapOf(
+                // Google is the only free route into Sorani, and it is the one that works.
+                EngineCodes.GOOGLE to "ckb",
                 EngineCodes.MYMEMORY to "ckb",
                 EngineCodes.LIBRETRANSLATE to EngineCodes.NONE,
                 EngineCodes.LLM to "ckb",
@@ -112,6 +115,7 @@ object Languages {
             script = Script.LATIN,
             ocrModel = "latin",
             engineCodes = mapOf(
+                EngineCodes.GOOGLE to "ku",
                 EngineCodes.MYMEMORY to "ku",
                 EngineCodes.LIBRETRANSLATE to EngineCodes.NONE,
                 EngineCodes.LLM to "ku",

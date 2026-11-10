@@ -18,7 +18,7 @@ private val Context.dataStore by preferencesDataStore(name = "mangascribe_settin
 data class AppSettings(
     val sourceLanguage: String = "ja",
     val targetLanguage: String = "en",
-    val engineId: String = "mymemory",
+    val engineId: String = app.mangascribe.core.EngineCodes.GOOGLE,
     val stripFurigana: Boolean = true,
     val mergeBlocks: Boolean = true,
     val maskOriginal: Boolean = true,
@@ -88,7 +88,9 @@ class SettingsStore(private val context: Context, private val secrets: SecretSto
         return AppSettings(
             sourceLanguage = p[Keys.source] ?: defaults.sourceLanguage,
             targetLanguage = p[Keys.target] ?: defaults.targetLanguage,
-            engineId = p[Keys.engine] ?: defaults.engineId,
+            // An install that still points at MyMemory is moved to Google once: its crowd
+            // translations were the reason pages read wrong. The choice stays editable.
+            engineId = p[Keys.engine]?.let(::migrateEngine) ?: defaults.engineId,
             stripFurigana = p[Keys.furigana] ?: defaults.stripFurigana,
             mergeBlocks = p[Keys.merge] ?: defaults.mergeBlocks,
             maskOriginal = p[Keys.mask] ?: defaults.maskOriginal,
@@ -107,6 +109,9 @@ class SettingsStore(private val context: Context, private val secrets: SecretSto
             scanOnLaunch = p[Keys.scanOnLaunch] ?: defaults.scanOnLaunch,
         )
     }
+
+    private fun migrateEngine(stored: String): String =
+        if (stored == "mymemory" || stored.isBlank()) app.mangascribe.core.EngineCodes.GOOGLE else stored
 
     suspend fun update(transform: (AppSettings) -> AppSettings) {
         val currentSecrets = loadSecrets()

@@ -48,9 +48,8 @@ class UnsupportedPairException(
         append(Languages.of(targetLanguage).displayName).append('.')
         if (tried.isNotEmpty()) append(" Tried: ").append(tried.joinToString(", ")).append('.')
         if (EngineCodes.isSorani(targetLanguage)) {
-            append(" MyMemory does not translate into Kurdish, and LibreTranslate has no " +
-                "Kurdish at all. Add a model key in Settings → Translation engine, or choose " +
-                "Turkish as the target and read it from there.")
+            append(" Switch to Google Translate in Settings → Translation engine: it is free " +
+                "and has Kurdish Sorani. LibreTranslate has no Kurdish at all.")
         }
     }
 )
@@ -354,6 +353,11 @@ object EngineCatalog {
 
     val all: List<Entry> = listOf(
         Entry(
+            EngineCodes.GOOGLE,
+            "Google Translate",
+            "Free, no key, and the best quality of the three. The only free route into Kurdish Sorani.",
+        ),
+        Entry(
             EngineCodes.MYMEMORY,
             "MyMemory",
             "Free, no key. Translates into Kurdish sometimes — it is a crowd memory, not a model.",
@@ -366,7 +370,7 @@ object EngineCatalog {
         Entry(
             EngineCodes.LLM,
             "Model endpoint",
-            "OpenAI-compatible. The only reliable route into Kurdish Sorani; needs a key.",
+            "OpenAI-compatible. Best for tone and names in long dialogue; needs a key.",
         ),
     )
 
@@ -387,10 +391,12 @@ object EngineCatalog {
     fun kurdishAdvice(targetLanguage: String, hasLlmKey: Boolean): String? {
         if (!EngineCodes.isSorani(targetLanguage)) return null
         return if (hasLlmKey) {
-            "Kurdish Sorani goes through your model endpoint. MyMemory is kept as the fallback."
+            "Kurdish Sorani is translated by Google Translate, with your model endpoint as the " +
+                "second choice for tone."
         } else {
-            "Kurdish Sorani needs a model key: add one below, or switch the target to Turkish " +
-                "and read it from there. LibreTranslate has no Kurdish at all."
+            "Kurdish Sorani works out of the box through Google Translate — no key needed. " +
+                "Add a model key only if you want better tone in long dialogue. (LibreTranslate " +
+                "has no Kurdish.)"
         }
     }
 }
