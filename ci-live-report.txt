@@ -40,6 +40,6 @@
        FIN | "هیچ لایەنێکی بێسوود نییە"، ها؟
            | transliterated=false leftover=false
     RAW-auto (engine answered):
-BUILD SUCCESSFUL in 58s
+BUILD SUCCESSFUL in 1m 4s
 
 == compile status ==
