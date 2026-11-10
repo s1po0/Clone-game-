@@ -359,6 +359,42 @@ object OcrCleanup {
     }
 
     /**
+     * Undo the other direction of the kaf/yeh trap, for text that is already Kurdish.
+     *
+     * OCR runs the *Arabic* model on alphabet-less lettering, so it writes Arabic ك/ي/ة; that is
+     * what [normaliseKurdish] fixes. The opposite happens on text that came back from a
+     * translator or from the user's own keyboard: `ه` where Kurdish writes `ە` (both are
+     * "h"-ish, both are legal in the encoding) and final `ی` used as the ezafe where Kurdish
+     * wants `ی`. Getting these wrong changes words, not just looks: `هەڵە` ("wrong") becomes a
+     * non-word if the `ە` is typed as `ه`.
+     *
+     * Only the two unambiguous substitutions are made — `ە` never appears in Arabic or Persian
+     * at all — and the text is otherwise left alone, because a blanket `ه`→`ە` would corrupt
+     * words like `هەموو` where both letters really occur.
+     */
+    fun normaliseKurdishSpelling(text: String): String {
+        if (text.isEmpty()) return text
+        val out = StringBuilder(text.length)
+        for (i in text.indices) {
+            val c = text[i]
+            val prev = if (i > 0) text[i - 1] else ' '
+            val next = if (i + 1 < text.length) text[i + 1] else ' '
+            when {
+                // Arabic teh marbuta is the sound 'a/e'; in Kurdish that letter is ە.
+                c == '\u0629' -> out.append('\u06D5')
+                // A bare heh at the end of a word, after a joining letter, is the Kurdish ە.
+                c == '\u0647' && (next.isWhitespace() || next.isPunctuation()) &&
+                    prev in JOINING_BEFORE_AE -> out.append('\u06D5')
+                else -> out.append(c)
+            }
+        }
+        return out.toString()
+    }
+
+    /** Letters that a word-final ە attaches to; excludes the non-joiners. */
+    private const val JOINING_BEFORE_AE = "بپتثجچحخدذرزژسشصضطظعغفقڤکگلمنهویێۆ"
+
+    /**
      * Insert the RTL mark around runs of Latin letters and digits so mixed lines keep their
      * order when drawn: "Goku ٣" must not render as "٣ Goku" in an RTL paragraph.
      */
@@ -375,7 +411,7 @@ object OcrCleanup {
             t = stripFurigana(t)
         }
         if (Languages.of(languageCode).script == Script.KURDISH) {
-            t = normaliseKurdish(t)
+            t = normaliseKurdishSpelling(normaliseKurdish(t))
         }
         t = t.dropWhile { it in NOISE || it.isWhitespace() }
             .dropLastWhile { it in NOISE || it.isWhitespace() }
