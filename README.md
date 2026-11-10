@@ -142,6 +142,11 @@ Nothing about the key is committed — `*.p12`/`*.jks`/`*.keystore` are in `.git
 only exists as an environment variable while the build runs. Full details, including the Play
 upload steps: **[docs/play-store.md](docs/play-store.md)**.
 
+Until the secrets exist, nothing changes: builds keep using the project key and keep updating.
+A one-page register of both keys, their fingerprints and the exact commands to check a copy is in
+**[docs/KEYS.md](docs/KEYS.md)** — so the app's identity does not depend on remembering this
+conversation.
+
 The project key's certificate fingerprint, for checking whether an install came from here:
 
 ```
