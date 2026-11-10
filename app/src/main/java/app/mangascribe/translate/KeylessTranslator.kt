@@ -4,6 +4,7 @@ import app.mangascribe.core.EngineCodes
 import app.mangascribe.core.Language
 import app.mangascribe.core.Languages
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 
@@ -76,7 +77,7 @@ class KeylessTranslateTranslator(
             val jobs = texts.mapIndexed { index, raw ->
                 val line = raw.trim()
                 if (line.isEmpty()) return@mapIndexed null
-                kotlinx.coroutines.launch {
+                launch {
                     gate.withPermit {
                         val attempt = tryRotation(line, sl, tl)
                         if (attempt.text != null) {
@@ -177,9 +178,8 @@ class KeylessTranslateTranslator(
     }
 
     private fun routes(sl: String, tl: String): List<Route> {
-        const val ua =
-            "Mozilla/5.0 (Linux; Android 14; SM-S918B) AppleWebKit/537.36 " +
-                "(KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36"
+        val ua = "Mozilla/5.0 (Linux; Android 14; SM-S918B) AppleWebKit/537.36 " +
+            "(KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36"
         return buildList {
             add(
                 Route(
