@@ -383,7 +383,7 @@ object OcrCleanup {
                 // Arabic teh marbuta is the sound 'a/e'; in Kurdish that letter is ە.
                 c == '\u0629' -> out.append('\u06D5')
                 // A bare heh at the end of a word, after a joining letter, is the Kurdish ە.
-                c == '\u0647' && (next.isWhitespace() || next.isPunctuation()) &&
+                c == '\u0647' && !next.isLetterOrDigit() &&
                     prev in JOINING_BEFORE_AE -> out.append('\u06D5')
                 else -> out.append(c)
             }
