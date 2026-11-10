@@ -71,10 +71,29 @@ jobs:
           grep -n "versionCode" app/build.gradle.kts
 
       - name: Unit tests
+        env:
+          MANGASCRIBE_UPLOAD_KEYSTORE_BASE64: ${{ secrets.MANGASCRIBE_UPLOAD_KEYSTORE_BASE64 }}
+          MANGASCRIBE_UPLOAD_STORE_PASSWORD: ${{ secrets.MANGASCRIBE_UPLOAD_STORE_PASSWORD }}
+          MANGASCRIBE_UPLOAD_KEY_ALIAS: ${{ secrets.MANGASCRIBE_UPLOAD_KEY_ALIAS }}
+          MANGASCRIBE_UPLOAD_KEY_PASSWORD: ${{ secrets.MANGASCRIBE_UPLOAD_KEY_PASSWORD }}
         run: ./gradlew :app:testDebugUnitTest --no-daemon --stacktrace 2>&1 | tee build-test.log
 
-      - name: Assemble debug APK
-        run: ./gradlew :app:assembleDebug --no-daemon --stacktrace
+      # Signed with the upload key when its secrets exist, so these APKs are the app's permanent
+      # identity: every later build — including the one from Play — updates them in place.
+      - name: Assemble APK
+        env:
+          MANGASCRIBE_UPLOAD_KEYSTORE_BASE64: ${{ secrets.MANGASCRIBE_UPLOAD_KEYSTORE_BASE64 }}
+          MANGASCRIBE_UPLOAD_STORE_PASSWORD: ${{ secrets.MANGASCRIBE_UPLOAD_STORE_PASSWORD }}
+          MANGASCRIBE_UPLOAD_KEY_ALIAS: ${{ secrets.MANGASCRIBE_UPLOAD_KEY_ALIAS }}
+          MANGASCRIBE_UPLOAD_KEY_PASSWORD: ${{ secrets.MANGASCRIBE_UPLOAD_KEY_PASSWORD }}
+        run: |
+          ./gradlew :app:assembleDebug --no-daemon --stacktrace
+          # The signer of the artifact, in the log, so the identity is never a guess.
+          APK=$(find app/build/outputs -name "*arm64-v8a*.apk" | head -1)
+          if [ -n "$APK" ] && [ -x "${ANDROID_HOME}/build-tools/35.0.0/apksigner" ]; then
+            "${ANDROID_HOME}/build-tools/35.0.0/apksigner" verify --print-certs "$APK" | head -6 \
+              | tee -a "$GITHUB_STEP_SUMMARY" || true
+          fi
 
       - name: Collect artifacts
         if: always()
@@ -101,8 +120,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           ls -lh out/*.apk
-          # The same key signs every build (build-support/mangascribe-release.p12), so this
-          # installs straight over the previous one and keeps the user's library.
+          # One key signs every build — the upload key when its secrets are set, the project key
+          # otherwise — so this installs straight over the previous one and keeps the library.
           APK=$(ls out/*arm64-v8a*.apk 2>/dev/null | head -1)
           if [ -n "$APK" ] && [ -x "${ANDROID_HOME}/build-tools/35.0.0/apksigner" ]; then
             "${ANDROID_HOME}/build-tools/35.0.0/apksigner" verify --print-certs "$APK" \
@@ -118,6 +137,9 @@ jobs:
           goes up each time, so installing this APK over the previous one keeps your library,
           translations and saved keys — do not uninstall first, and do not install two different
           builds at once.
+
+          Check the signer before installing, if you want: `apksigner verify --print-certs` on
+          your copy, and compare the SHA-256 with the one printed in this run's log.
 
           Install: download the .apk, tap it, allow installing from this source, install.
           Requires Android 8.0 (API 26) or newer.
@@ -160,11 +182,11 @@ jobs:
           if-no-files-found: ignore
 
   # ---------------------------------------------------------------------------------------
-  # Play Store bundle. This is where "your own key" matters: the .aab that goes to Play must
-  # be signed with the upload key you created on your own machine, so Play can keep serving
-  # updates for this app for as long as the app exists. That key is never in the repository:
-  # it travels through GitHub secrets (see docs/play-store.md) and only exists as an
-  # environment variable inside this job.
+  # Play Store bundle. The .aab is signed with the owner's upload key, the same key that signs
+  # the release APKs above, so Play and the GitHub releases are one app that can keep updating
+  # itself for as long as the key exists. The key never enters the repository: it travels
+  # through GitHub secrets (docs/play-store.md) and only exists as an environment variable
+  # inside the build jobs.
   #
   # The job is skipped, not failed, when the secrets are absent, so the sideload APKs above keep
   # building for forks.
@@ -191,13 +213,13 @@ jobs:
       - name: Check for the upload key
         id: key
         env:
-          KEY_B64: ${{ secrets.MANGASCRIBE_PLAY_KEYSTORE_BASE64 }}
+          KEY_B64: ${{ secrets.MANGASCRIBE_UPLOAD_KEYSTORE_BASE64 }}
         run: |
           if [ -z "$KEY_B64" ]; then
             echo "present=false" >> "$GITHUB_OUTPUT"
-            echo "No MANGASCRIBE_PLAY_KEYSTORE_BASE64 secret: skipping the Play bundle." >> "$GITHUB_STEP_SUMMARY"
+            echo "No MANGASCRIBE_UPLOAD_KEYSTORE_BASE64 secret: skipping the Play bundle (the APKs still build with the project key)." >> "$GITHUB_STEP_SUMMARY"
             echo "The upload key is the only thing that lets Play accept updates for this app;" >> "$GITHUB_STEP_SUMMARY"
-            echo "add the four MANGASCRIBE_PLAY_* secrets described in docs/play-store.md." >> "$GITHUB_STEP_SUMMARY"
+            echo "add the four MANGASCRIBE_UPLOAD_* secrets described in docs/play-store.md." >> "$GITHUB_STEP_SUMMARY"
           else
             echo "present=true" >> "$GITHUB_OUTPUT"
           fi
@@ -211,10 +233,10 @@ jobs:
       - name: Build the app bundle
         if: steps.key.outputs.present == 'true'
         env:
-          MANGASCRIBE_PLAY_KEYSTORE_BASE64: ${{ secrets.MANGASCRIBE_PLAY_KEYSTORE_BASE64 }}
-          MANGASCRIBE_PLAY_STORE_PASSWORD: ${{ secrets.MANGASCRIBE_PLAY_STORE_PASSWORD }}
-          MANGASCRIBE_PLAY_KEY_ALIAS: ${{ secrets.MANGASCRIBE_PLAY_KEY_ALIAS }}
-          MANGASCRIBE_PLAY_KEY_PASSWORD: ${{ secrets.MANGASCRIBE_PLAY_KEY_PASSWORD }}
+          MANGASCRIBE_UPLOAD_KEYSTORE_BASE64: ${{ secrets.MANGASCRIBE_UPLOAD_KEYSTORE_BASE64 }}
+          MANGASCRIBE_UPLOAD_STORE_PASSWORD: ${{ secrets.MANGASCRIBE_UPLOAD_STORE_PASSWORD }}
+          MANGASCRIBE_UPLOAD_KEY_ALIAS: ${{ secrets.MANGASCRIBE_UPLOAD_KEY_ALIAS }}
+          MANGASCRIBE_UPLOAD_KEY_PASSWORD: ${{ secrets.MANGASCRIBE_UPLOAD_KEY_PASSWORD }}
         run: ./gradlew :app:bundleRelease --no-daemon --stacktrace
 
       # Proves the artifact carries the user's key, not the project's: the certificate digest
@@ -226,15 +248,15 @@ jobs:
           cp app/build/outputs/bundle/release/*.aab out/mangascribe-${GITHUB_RUN_NUMBER}.aab
           ls -lh out/*.aab >> "$GITHUB_STEP_SUMMARY"
           KEYSTORE=$(mktemp)
-          echo "$MANGASCRIBE_PLAY_KEYSTORE_BASE64" | base64 -d > "$KEYSTORE"
+          echo "$MANGASCRIBE_UPLOAD_KEYSTORE_BASE64" | base64 -d > "$KEYSTORE"
           keytool -list -v -keystore "$KEYSTORE" \
-            -storepass "$MANGASCRIBE_PLAY_STORE_PASSWORD" \
-            -alias "$MANGASCRIBE_PLAY_KEY_ALIAS" | grep -E "Alias|SHA256|Valid" >> "$GITHUB_STEP_SUMMARY" || true
+            -storepass "$MANGASCRIBE_UPLOAD_STORE_PASSWORD" \
+            -alias "$MANGASCRIBE_UPLOAD_KEY_ALIAS" | grep -E "Alias|SHA256|Valid" >> "$GITHUB_STEP_SUMMARY" || true
           rm -f "$KEYSTORE"
         env:
-          MANGASCRIBE_PLAY_KEYSTORE_BASE64: ${{ secrets.MANGASCRIBE_PLAY_KEYSTORE_BASE64 }}
-          MANGASCRIBE_PLAY_STORE_PASSWORD: ${{ secrets.MANGASCRIBE_PLAY_STORE_PASSWORD }}
-          MANGASCRIBE_PLAY_KEY_ALIAS: ${{ secrets.MANGASCRIBE_PLAY_KEY_ALIAS }}
+          MANGASCRIBE_UPLOAD_KEYSTORE_BASE64: ${{ secrets.MANGASCRIBE_UPLOAD_KEYSTORE_BASE64 }}
+          MANGASCRIBE_UPLOAD_STORE_PASSWORD: ${{ secrets.MANGASCRIBE_UPLOAD_STORE_PASSWORD }}
+          MANGASCRIBE_UPLOAD_KEY_ALIAS: ${{ secrets.MANGASCRIBE_UPLOAD_KEY_ALIAS }}
 
       - name: Upload the bundle
         if: steps.key.outputs.present == 'true'

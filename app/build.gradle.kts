@@ -7,21 +7,48 @@ plugins {
 }
 
 /**
- * The release keystore.
+ * Signing, and why there is more than one key.
  *
- * Every debug build is signed with a fresh key, which is why Android refused to install a new
- * build over the old one ("App not installed" / "Update not applied"). A stable key fixes that
- * permanently: same package, same signer, increasing versionCode → a normal update that keeps
- * the library, translations and settings.
+ * Android only installs an update whose signer matches the installed app and whose versionCode
+ * is higher. Two different audiences therefore need two different identities:
  *
- * The keystore in build-support/ is a self-signed key generated for this project. It is not
- * secret in the usual sense (it is in the repository, and every build uses it), but it IS the
- * identity of the app: keep it, and every future build will install over the previous one.
- * Replace it with your own before publishing, and never lose the replacement.
+ * - **`upload`** — *the user's* key. It signs the `.aab` for Play *and* the release APKs on
+ *   GitHub Releases, so a build from this repository is the app's permanent identity: once it
+ *   is installed, every future build updates it in place. The key is never committed; it is
+ *   supplied through the environment (GitHub secrets) and read here.
+ * - **`stable`** — the project key in `build-support/`, still used for the `debug` variant so
+ *   forks and CI test builds stay installable without any secrets.
+ *
+ * When the upload key is absent (a fork, a local build without the secrets) release builds fall
+ * back to `stable` instead of failing: an unsigned release could not be installed at all.
  */
+val uploadKeystoreBase64: String? = System.getenv("MANGASCRIBE_UPLOAD_KEYSTORE_BASE64")
+val uploadKeystorePath: String? = System.getenv("MANGASCRIBE_UPLOAD_KEYSTORE_PATH")
+val uploadKeystoreFile: File? = when {
+    !uploadKeystoreBase64.isNullOrBlank() -> {
+        // Written into the build directory, never into the source tree, and rebuilt each time.
+        val decoded = File(rootProject.layout.buildDirectory.get().asFile, "upload-key.p12")
+        decoded.parentFile.mkdirs()
+        decoded.writeBytes(java.util.Base64.getMimeDecoder().decode(uploadKeystoreBase64.trim()))
+        decoded
+    }
+    !uploadKeystorePath.isNullOrBlank() -> File(uploadKeystorePath!!).takeIf { it.exists() }
+    else -> null
+}
+val uploadStorePassword = System.getenv("MANGASCRIBE_UPLOAD_STORE_PASSWORD").orEmpty()
+val uploadKeyAlias = System.getenv("MANGASCRIBE_UPLOAD_KEY_ALIAS") ?: "mangascribe"
+val uploadKeyPassword = System.getenv("MANGASCRIBE_UPLOAD_KEY_PASSWORD") ?: uploadStorePassword
+
 val keystoreFile = rootProject.file("build-support/mangascribe-release.p12")
 val keystorePassword = System.getenv("MANGASCRIBE_KEYSTORE_PASSWORD") ?: "mangascribe"
 val keystoreAlias = System.getenv("MANGASCRIBE_KEY_ALIAS") ?: "mangascribe"
+
+/**
+ * Which identity this build carries. Release APKs and the Play bundle both use the upload key
+ * when it exists, so installing `apk-<n>` from GitHub and then updating it from Play both land
+ * on the same signer and the same library.
+ */
+val useUploadKey = uploadKeystoreFile != null
 
 android {
     namespace = "app.mangascribe"
@@ -50,6 +77,17 @@ android {
     }
 
     signingConfigs {
+        create("upload") {
+            if (uploadKeystoreFile != null) {
+                storeFile = uploadKeystoreFile
+                storePassword = uploadStorePassword
+                keyAlias = uploadKeyAlias
+                keyPassword = uploadKeyPassword
+                enableV1Signing = true
+                enableV2Signing = true
+                enableV3Signing = true
+            }
+        }
         create("stable") {
             if (keystoreFile.exists()) {
                 storeFile = keystoreFile
@@ -68,18 +106,28 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            // The same key as the test builds: an update replaces the installed app instead of
-            // being refused.
-            if (keystoreFile.exists()) signingConfig = signingConfigs.getByName("stable")
+            // The user's upload key when CI provides it; the project key otherwise. Either way
+            // a signed release, because an unsigned one cannot be installed.
+            signingConfig = when {
+                useUploadKey -> signingConfigs.getByName("upload")
+                keystoreFile.exists() -> signingConfigs.getByName("stable")
+                else -> null
+            }
         }
-        // Installable builds are named "debug" for history's sake but are signed with the
-        // stable key and use the real application id, so they install over each other and
-        // keep the user's data. A separate `.debug` id would have made every build a second
-        // app that could never update the first.
+        // The builds published as GitHub releases are named "debug" for history's sake but use
+        // the real application id, so they install over each other and keep the user's data.
+        // They carry the same identity as the Play bundle when the upload key is present, so a
+        // sideloaded install and a Play install are the same app; without the secrets they fall
+        // back to the project key and still update each other.
         getByName("debug") {
             versionNameSuffix = "-debug"
-            if (keystoreFile.exists()) signingConfig = signingConfigs.getByName("stable")
+            signingConfig = when {
+                useUploadKey -> signingConfigs.getByName("upload")
+                keystoreFile.exists() -> signingConfigs.getByName("stable")
+                else -> null
+            }
         }
     }
 
@@ -92,6 +140,13 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+    }
+
+    bundle {
+        // Play re-splits the app per device; a bundle must therefore carry everything.
+        language { enableSplit = false } // OCR models are loaded by language at runtime
+        density { enableSplit = true }
+        abi { enableSplit = true }
     }
 
     packaging {

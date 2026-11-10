@@ -15,11 +15,14 @@ You need a JDK (`keytool` ships with it). In a terminal, on a machine you trust:
 
 ```bash
 keytool -genkeypair -v \
-  -keystore mangascribe-upload.jks \
+  -keystore mangascribe-upload.p12 \
   -alias mangascribe \
   -keyalg RSA -keysize 4096 -validity 10000 \
-  -storetype JKS
+  -storetype PKCS12
 ```
+
+(`keytool` from JDK 9 or newer writes PKCS12 with this command; older JDKs need
+`-storetype JKS`, and this build reads either.)
 
 It asks for a store password and a key password — **write both down**. Use 25+ characters;
 this is the one password that can never be reset. `-validity 10000` is ~27 years, which is the
@@ -29,22 +32,24 @@ Then make the base64 form that GitHub can hold:
 
 ```bash
 # macOS
-base64 -i mangascribe-upload.jks | tr -d '\n' | pbcopy
+base64 -i mangascribe-upload.p12 | tr -d '\n' | pbcopy
 # Linux
-base64 -w0 mangascribe-upload.jks
+base64 -w0 mangascribe-upload.p12
 # Windows (PowerShell)
-[Convert]::ToBase64String([IO.File]::ReadAllBytes("mangascribe-upload.jks"))
+[Convert]::ToBase64String([IO.File]::ReadAllBytes("mangascribe-upload.p12"))
 ```
 
 ## 2. Keep the key safe
 
-Copy `mangascribe-upload.jks` and the two passwords into two places you will still have in five
+Copy `mangascribe-upload.p12` and the two passwords into two places you will still have in five
 years (a password manager and an offline copy). It is not a secret from *you* — it is a secret
 from everyone else, and losing it means Play will never accept an update for this app under that
 key again. Play App Signing can reset an *upload* key, but only while you still control the
 Play account and the app; offline copies remove the whole question.
 
-**Never** commit the `.jks` to git. `.gitignore` already refuses `*.jks` and `*.keystore`.
+**Never** commit the keystore to git. `.gitignore` already refuses `*.jks`, `*.keystore` and
+`*.p12`, and this build never writes it into the source tree — it is decoded into the build
+directory for the length of one run.
 
 ## 3. Put the four secrets in GitHub
 
@@ -52,29 +57,34 @@ Repository → **Settings → Secrets and variables → Actions → New reposito
 
 | Secret | What to paste |
 |---|---|
-| `MANGASCRIBE_PLAY_KEYSTORE_BASE64` | the long base64 string from step 1 |
-| `MANGASCRIBE_PLAY_STORE_PASSWORD` | the store password you chose |
-| `MANGASCRIBE_PLAY_KEY_ALIAS` | `mangascribe` (or whatever alias you used) |
-| `MANGASCRIBE_PLAY_KEY_PASSWORD` | the key password (often the same as the store password) |
+| `MANGASCRIBE_UPLOAD_KEYSTORE_BASE64` | the long base64 string from step 1 |
+| `MANGASCRIBE_UPLOAD_STORE_PASSWORD` | the store password you chose |
+| `MANGASCRIBE_UPLOAD_KEY_ALIAS` | `mangascribe` (or whatever alias you used) |
+| `MANGASCRIBE_UPLOAD_KEY_PASSWORD` | the key password (often the same as the store password) |
 
-From then on every push builds `app-release.aab` signed with **your** key and attaches it to the
-workflow run as `mangascribe-play-bundle`. The build log also prints your certificate's SHA-256 —
-that is the fingerprint to compare against Play Console.
+From then on every push signs **both** the release APKs and `app-release.aab` with your key, and
+attaches the bundle to the workflow run as `mangascribe-play-bundle`. The build log prints the
+certificate's SHA-256 for whichever artifact it just checked — that is the fingerprint to compare
+with Play Console and with an APK you already have installed.
 
-If the secrets are absent the bundle job skips itself (it does not fail), and the sideload APKs
-keep being signed with `build-support/mangascribe-release.p12` so people who installed from
-GitHub releases keep getting updates.
+If the secrets are absent the bundle job skips itself (it does not fail) and the APKs are signed
+with the project key instead, so a fork or a local build still produces something installable.
 
 ## 4. Which key signs what
 
 | Build | Signed with | Who uses it |
 |---|---|---|
-| Release APK on GitHub Releases (`apk-<n>`) | `build-support/mangascribe-release.p12` | anyone sideloading; updates install over each other |
-| Play upload `.aab` | **your upload key**, from the secrets | Play Console |
+| Release APK on GitHub Releases (`apk-<n>`) | **your upload key** | anyone sideloading; every later build updates it |
+| Play upload `.aab` | **your upload key** | Play Console |
 | The installed app on Play devices | Play App Signing key (Google holds it) | end users |
 
-Two identities, on purpose: the sideload APKs must keep updating for the people who already have
-them, and the Play key must be yours alone. They never have to be the same key.
+One identity for everything you ship, which is the point: an install from GitHub and an install
+from Play are the same app, so a future build updates either one without losing the library.
+
+If the four secrets are missing, the APKs fall back to the project key
+`build-support/mangascribe-release.p12`. Those installs can only be updated by builds made with
+that project key, so if you add the secrets later, expect one backup-and-restore step for anyone
+who installed before.
 
 ## 5. Publishing, if and when you want to
 

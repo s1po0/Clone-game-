@@ -97,50 +97,52 @@ file manager if Android asks, then install. Android 8.0 (API 26) or newer.
 
 ### Updates install over the old build
 
-Every APK from build 18 on is signed with **the same key** (`build-support/mangascribe-release.p12`)
-and carries an increasing `versionCode` (the workflow run number), and the application id is the
-same. So installing a new APK **replaces** the old one and keeps your library, translations and
-saved keys. Do not uninstall first.
+Every build is signed with **one key** and carries an increasing `versionCode` (the workflow run
+number), and the application id never changes. So installing a new APK **replaces** the old one
+and keeps your library, translations and saved keys. Do not uninstall first.
 
-Builds before that were debug-signed with a fresh key each time and used the id
+Which key that is:
+
+| Situation | Signer | Consequence |
+|---|---|---|
+| the four `MANGASCRIBE_UPLOAD_*` secrets exist | **the owner's upload key** (not in this repository) | these APKs and the Play build are the same app — permanent updates |
+| they do not exist (a fork, a local build) | `build-support/mangascribe-release.p12` | updates work, but only against builds from this project key |
+
+Builds before `apk-19` were debug-signed with a fresh key each time and used the id
 `app.mangascribe.debug`, so they could never update each other — Android saw a different app.
-If you have one of those installed, it stays behind as a second icon; back the library up in
-**Settings → Backup and moving to a new build**, install this build, then restore. Then uninstall
-the old one.
+If you have one of those installed, back the library up in **Settings → Backup and moving to a
+new build**, install the new build, then restore. Then uninstall the old one.
 
-The key in the repository is the app's identity, not a secret to guard from yourself — but keep
-it: replacing it restarts the problem above. Replace it with your own key before publishing, and
-never lose the replacement.
+### Making the key yours
 
-### Your own key — for Play, or just for updates
+The four secrets below turn this repository into *your* app: the release APKs and the `.aab`
+are then signed with your key, and only a build made with that key can ever update it.
 
-You do not need Google Play to use your own key, and you do not have to use the repository's key
-either. Create one key on your own machine, keep it forever, add four GitHub secrets, and every
-build — the `.aab` for Play *and*, if you want, the sideload APK — carries your identity instead
-of the project's.
+1. Create the key once, on a machine you trust (`keytool` comes with any JDK):
 
-Step-by-step: **[docs/play-store.md](docs/play-store.md)**. The short version:
+   ```bash
+   keytool -genkeypair -v -keystore mangascribe-upload.p12 -storetype PKCS12 \
+     -alias mangascribe -keyalg RSA -keysize 4096 -validity 10000
+   ```
 
-```bash
-keytool -genkeypair -v -keystore mangascribe-upload.jks \
-  -alias mangascribe -keyalg RSA -keysize 4096 -validity 10000 -storetype JKS
-```
+2. Repository → **Settings → Secrets and variables → Actions**:
 
-then repository → Settings → Secrets → Actions:
+   | Secret | Value |
+   |---|---|
+   | `MANGASCRIBE_UPLOAD_KEYSTORE_BASE64` | `base64 -w0 mangascribe-upload.p12` |
+   | `MANGASCRIBE_UPLOAD_STORE_PASSWORD` | the store password you typed |
+   | `MANGASCRIBE_UPLOAD_KEY_ALIAS` | `mangascribe` |
+   | `MANGASCRIBE_UPLOAD_KEY_PASSWORD` | the key password you typed |
 
-| Secret | Value |
-|---|---|
-| `MANGASCRIBE_PLAY_KEYSTORE_BASE64` | `base64 -w0 mangascribe-upload.jks` |
-| `MANGASCRIBE_PLAY_STORE_PASSWORD` | the store password you typed |
-| `MANGASCRIBE_PLAY_KEY_ALIAS` | `mangascribe` |
-| `MANGASCRIBE_PLAY_KEY_PASSWORD` | the key password you typed |
+3. Push. The build prints the certificate's SHA-256 in its log — that is now your app's identity.
+   Back up the `.p12` **and both passwords** in two places: losing them means no future build can
+   install as an update.
 
-Nothing about the key is committed — `*.jks` and `*.keystore` are in `.gitignore`, and the key
-only ever exists as an environment variable inside the build job. The `apk-<n>` APKs on GitHub
-Releases stay signed with the project key so the people already using them keep getting updates;
-the `.aab` is signed with yours. Two identities, on purpose.
+Nothing about the key is committed — `*.p12`/`*.jks`/`*.keystore` are in `.gitignore`, and the key
+only exists as an environment variable while the build runs. Full details, including the Play
+upload steps: **[docs/play-store.md](docs/play-store.md)**.
 
-The project key's certificate fingerprint, for checking that an install came from here:
+The project key's certificate fingerprint, for checking whether an install came from here:
 
 ```
 SHA-256: 5f:5f:ee:f4:59:c4:76:f0:21:89:5e:5a:77:25:28:66:ef:c3:6f:c7:9d:69:b5:65:75:ab:16:bb:76:7c:6c:f4
