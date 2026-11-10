@@ -180,6 +180,22 @@ object Languages {
     }
 
     /**
+     * Every model worth running on a page, strongest first.
+     *
+     * A Sorani page is Arabic script, so ML Kit's Arabic model is the primary reader — but it was
+     * trained on Arabic lettering and misreads the ten Kurdish-only letters. The Latin model then
+     * picks up the romanised sound effects and the URLs that the Arabic model drops, and the
+     * Devanagari model is not used at all. Returning an explicit list (rather than one model)
+     * is what lets the OCR engine [app.mangascribe.ocr.OcrEngine] run a second, heavier pass and
+     * keep the reading that produced more, better-shaped text.
+     */
+    fun ocrModelsFull(code: String): List<String> {
+        // A page always carries Latin somewhere (sfx, numbers, a credit), so it is always second.
+        val base = listOfNotNull(of(code).ocrModel)
+        return (base + "latin").distinct().ifEmpty { listOf("latin") }
+    }
+
+    /**
      * Auto-detect the source language from the characters actually recognised.
      * Kurdish (Sorani) is checked before Arabic: they share a script, but Sorani's own letters
      * (پ ژ گ چ ڤ ۆ ێ ڕ ڵ ە) are enough to tell them apart on anything longer than a word.

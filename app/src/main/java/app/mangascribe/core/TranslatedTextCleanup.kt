@@ -37,6 +37,7 @@ object TranslatedTextCleanup {
         }
         return lowered
             .replace(Regex("\\s+"), " ")
+            .replace(" " + KurdishTransliteration.MARK.trim(), KurdishTransliteration.MARK)
             .replace(Regex("\\s+([؟،؛!.?])"), "$1")
             .replace(Regex("([.?!])\\s*$"), "$1")
             .trim()
@@ -54,6 +55,8 @@ object TranslatedTextCleanup {
     fun hasLeftoverSource(translated: String, source: String, targetIsRtl: Boolean): Boolean {
         if (!targetIsRtl) return false
         if (translated.isBlank()) return true
+        // A line written in Kurdish letters is finished work, even when it is a transliteration.
+        if (KurdishTransliteration.isTransliterated(translated)) return false
         val sourceWords = source.lowercase()
             .split(Regex("[^\\p{L}\\p{N}]+"))
             .filter { it.length >= 3 }

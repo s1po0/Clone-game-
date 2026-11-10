@@ -69,12 +69,27 @@ class LineTranslator(
             }
         }
 
+        // 3. Whatever is still not in the target language gets written in Kurdish letters. The
+        // instruction was explicit: if a word has no Kurdish meaning, make it Kurdish letters
+        // rather than leave English in an RTL bubble. It is marked as transliteration, and the
+        // renderer shows the ۞ so nobody reads a sound as a meaning.
         val lines = source.map { raw ->
             val key = raw.trim()
-            repaired[key] ?: bySource[key] ?: raw
+            val candidate = repaired[key] ?: bySource[key] ?: raw
+            if (targetIsRtl &&
+                TranslatedTextCleanup.hasLeftoverSource(candidate, raw, targetIsRtl = true)
+            ) {
+                app.mangascribe.core.KurdishTransliteration.fallbackLine(candidate)
+            } else {
+                candidate
+            }
         }
         val unfinished = source.indices.filter { index ->
             TranslatedTextCleanup.hasLeftoverSource(lines[index], source[index], targetIsRtl)
+        }.filterNot { index ->
+            // A transliterated line is not "unfinished": it is in Kurdish letters, which is what
+            // was asked for when no engine could do better.
+            app.mangascribe.core.KurdishTransliteration.isTransliterated(lines[index])
         }
         if (unfinished.isNotEmpty()) {
             onDiagnostic(

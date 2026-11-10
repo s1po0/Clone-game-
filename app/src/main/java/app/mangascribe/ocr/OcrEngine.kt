@@ -31,6 +31,15 @@ data class OcrOptions(
     val dropJunk: Boolean = true,
     /** Upscale small pages before recognition: ML Kit reads 10 px lettering poorly. */
     val upscaleBelowWidth: Int = 1100,
+    /**
+     * Heavier reading. Decodes the page at a higher resolution and, when the first pass looks
+     * thin (few blocks, low confidence, mostly Latin on an Arabic-script page), reads it again
+     * and keeps whichever pass explained more of the page. Slower by design — it is the
+     * "read it properly" switch, and the default is on for pages that need it.
+     */
+    val heavyPass: Boolean = true,
+    /** Decode width for the heavy pass. Larger than the normal OCR width on purpose. */
+    val heavyWidth: Int = 2200,
     /** Ignore detections smaller than this many pixels of height (scan noise, dust). */
     val minBlockHeightPx: Float = 6f,
     /**
@@ -136,7 +145,33 @@ class MlKitOcrEngine(private val context: Context) : OcrEngine {
                 collected += recognizeWithModel(bitmap, model).map { it.scaleBack(1f / scale) }
                 if (model != "latin" && collected.size > 24) break
             }
-            return finish(collected, languageCode, options, models, started)
+            val first = finish(collected, languageCode, options, models, started)
+
+            // A second, heavier reading when the first one looks thin. On an Arabic-script page
+            // this is the difference between "the bubble is empty" and "the bubble was read":
+            // ML Kit gives up on small lettering that a 2.2× decode resolves.
+            if (options.heavyPass && needsHeavyPass(first, languageCode, source.width)) {
+                val heavy = runCatching {
+                    val bigger = source.load(options.heavyWidth)
+                    if (bigger == null || bigger.width <= bitmap.width) {
+                        null
+                    } else {
+                        val heavyScale = source.width.toFloat() / bigger.width
+                        val second = mutableListOf<TextBlock>()
+                        for (model in Languages.ocrModelsFull(languageCode)) {
+                            second += recognizeWithModel(bigger, model)
+                                .map { it.scaleBack(1f / heavyScale) }
+                        }
+                        finish(second, languageCode, options, models + "heavy", started)
+                    }
+                }.getOrNull()
+                if (heavy != null && OcrQuality.score(heavy, languageCode) >
+                    OcrQuality.score(first, languageCode)
+                ) {
+                    return heavy
+                }
+            }
+            return first
         }
 
         val fileSource = source as ImageSource.FileSource
@@ -153,7 +188,7 @@ class MlKitOcrEngine(private val context: Context) : OcrEngine {
             ) ?: break
             // A band is in page pixels already; decodeBand samples by the same factor the
             // whole page would have used, so coordinates only need the band's own offset.
-            for (model in models) {
+            for (model in if (options.heavyPass) Languages.ocrModelsFull(languageCode) else models) {
                 val found = recognizeWithModel(band, model)
                 collected += found.map { block ->
                     block.copy(
@@ -167,6 +202,25 @@ class MlKitOcrEngine(private val context: Context) : OcrEngine {
             if (top + options.bandOverlapPx >= fileSource.height) break
         }
         return finish(collected, languageCode, options, models, started)
+    }
+
+    /**
+     * Would a heavier read plausibly do better? Three cheap signals, all of which the failure
+     * screenshot produced: almost no text on a page full of lettering, a low mean confidence,
+     * or an Arabic-script target that came back almost entirely Latin.
+     */
+    private fun needsHeavyPass(result: OcrResult, languageCode: String, pageWidth: Int): Boolean {
+        val blocks = result.blocks
+        val expected = maxOf(2, pageWidth / 120)
+        if (blocks.size < expected) return true
+        val letters = blocks.sumOf { block -> block.text.count { it.isLetter() } }
+        if (letters < 12) return true
+        val script = Languages.of(languageCode).script
+        if (script == app.mangascribe.core.Script.KURDISH || script == app.mangascribe.core.Script.ARABIC) {
+            val arabic = blocks.sumOf { block -> block.text.count { it in '\u0600'..'\u06FF' } }
+            if (arabic * 4 < letters) return true
+        }
+        return false
     }
 
     /** Everything after recognition: language, junk, merging, cleaning. Shared by both paths. */
