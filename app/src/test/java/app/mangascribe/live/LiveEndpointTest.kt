@@ -31,6 +31,21 @@ class LiveEndpointTest {
     private fun requireLive() = assumeTrue("set MANGASCRIBE_LIVE=1 to run", live)
 
     @Test
+    fun `the dj=1 json shape answers in kurdish`() {
+        requireLive()
+        val body = kotlinx.coroutines.runBlocking {
+            OkHttpHttp().get(
+                "https://translate.googleapis.com/translate_a/single?client=gtx" +
+                    "&sl=auto&tl=ckb&dt=t&dj=1&q=hello",
+                headers = mapOf("User-Agent" to "MangaScribe/live-test"),
+            )
+        }
+        println("LIVE dj=1: $body")
+        val text = GoogleResponseParser.parseJson(body)
+        assertTrue("no Kurdish in: $body", text!!.any { it in '\u0600'..'\u06FF' })
+    }
+
+    @Test
     fun `the exact url the app sends answers in kurdish`() {
         requireLive()
         val body = kotlinx.coroutines.runBlocking {

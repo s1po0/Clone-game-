@@ -121,8 +121,9 @@ class GoogleTranslateTranslator(
             append("&dt=t&ie=UTF-8&oe=UTF-8&q=")
             append(java.net.URLEncoder.encode(line, "UTF-8"))
         }
+        val json = url.replace("&dt=t&", "&dt=t&dj=1&")
         val body = http.get(
-            url,
+            json,
             headers = mapOf(
                 // The endpoint answers without these, but a browser-shaped call is less likely
                 // to be handed a consent page instead of JSON.
@@ -131,7 +132,11 @@ class GoogleTranslateTranslator(
                 "Accept" to "application/json",
             ),
         )
-        return GoogleResponseParser.parse(body)
+        // `dj=1` returns `{"sentences":[{"trans":...}]}` — one object per sentence, no nested
+        // arrays to walk and no ambiguity about where a segment ends. Fall back to the array
+        // parser for an endpoint that ignores the flag.
+        return GoogleResponseParser.parseJson(body)
+            ?: GoogleResponseParser.parse(body)
             ?: throw TranslationException("Google Translate returned an unexpected response")
     }
 }
@@ -156,6 +161,26 @@ object GoogleCodes {
  * across segments must not be truncated to its first fragment.
  */
 object GoogleResponseParser {
+
+    /**
+     * `dj=1`: `{"sentences":[{"trans":"...","orig":"..."}, ...],"src":"en"}`.
+     *
+     * This is the shape Google's own web client asks for, and it is strictly better for a page of
+     * bubbles: every sentence is its own object, so a multi-line request cannot be mis-split the
+     * way the nested array can.
+     */
+    fun parseJson(json: String): String? {
+        val trimmed = json.trim()
+        if (!trimmed.startsWith("{")) return null
+        val root = runCatching { org.json.JSONObject(trimmed) }.getOrNull() ?: return null
+        val sentences = root.optJSONArray("sentences") ?: return null
+        val out = StringBuilder()
+        for (i in 0 until sentences.length()) {
+            val entry = sentences.optJSONObject(i) ?: continue
+            out.append(entry.optString("trans"))
+        }
+        return unescapeHtml(out.toString()).takeIf { it.isNotBlank() }
+    }
 
     fun parse(json: String): String? {
         val segments = parseSegments(json) ?: return null

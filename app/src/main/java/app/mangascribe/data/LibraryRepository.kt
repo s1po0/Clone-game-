@@ -19,6 +19,7 @@ import app.mangascribe.translate.GoogleTranslateTranslator
 import app.mangascribe.translate.HostHealth
 import app.mangascribe.translate.KeylessTranslateTranslator
 import app.mangascribe.translate.LineTranslator
+import app.mangascribe.translate.MicrosoftTranslateTranslator
 import app.mangascribe.translate.overlay
 import app.mangascribe.translate.Http
 import app.mangascribe.translate.LibreTranslateTranslator
@@ -675,6 +676,10 @@ class LibraryRepository(
         // The keyless rotation first: several public endpoints, so a rate-limited one does not
         // end the page. Google (single endpoint) stays as a separate, fast first choice when the
         // user picked it explicitly.
+        // Microsoft first for Kurdish: it is the one engine with a dedicated Sorani model on a
+        // keyless endpoint, and it answers when Google echoes the line back. Then the keyless
+        // rotation (Google's free endpoints), then the single Google endpoint.
+        add(MicrosoftTranslateTranslator(http))
         add(KeylessTranslateTranslator(http))
         add(GoogleTranslateTranslator(http))
         add(MyMemoryTranslator(http))

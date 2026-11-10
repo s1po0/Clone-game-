@@ -52,6 +52,8 @@ object EngineCodes {
      */
     const val KEYLESS = "keyless"
     const val MYMEMORY = "mymemory"
+    /** Microsoft's public translator: the other engine that carries a real Sorani model. */
+    const val MICROSOFT = "microsoft"
     const val LIBRETRANSLATE = "libretranslate"
     const val LLM = "openai-compatible"
 
@@ -127,6 +129,7 @@ object Languages {
                 // Google is the only free route into Sorani, and it is the one that works.
                 EngineCodes.GOOGLE to "ckb",
                 EngineCodes.KEYLESS to "ckb",
+                EngineCodes.MICROSOFT to "ckb",
                 EngineCodes.MYMEMORY to "ckb",
                 EngineCodes.LIBRETRANSLATE to EngineCodes.NONE,
                 EngineCodes.LLM to "ckb",
