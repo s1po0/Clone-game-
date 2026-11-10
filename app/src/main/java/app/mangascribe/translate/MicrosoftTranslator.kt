@@ -37,9 +37,14 @@ class MicrosoftTranslateTranslator(
     private val gate = Semaphore(maxConcurrent)
 
     override fun codeFor(language: Language): String? = when (language.code) {
-        // Microsoft's own name for the same language: Central Kurdish.
-        "ckb" -> "ckb"
-        "ku" -> "ku"
+        // **Microsoft uses `ku` for Central Kurdish (Sorani)**, not `ckb`. Sending `ckb` to its
+        // keyless endpoint answers HTTP 400 — measured, not assumed: `to=ckb` was refused while
+        // `to=ku` returned `سڵاو` for "hello". This is the opposite of Google, where `ckb` is
+        // Sorani and `ku` is Kurmanji, and getting it wrong is a whole page of untranslated text.
+        "ckb" -> "ku"
+        // Kurmanji is the other direction: Microsoft's `ku` is already taken, and it has no
+        // separate Northern Kurdish code on this endpoint, so it is left to Google.
+        "ku" -> null
         "zh-Hans" -> "zh-Hans"
         "zh-Hant" -> "zh-Hant"
         else -> null

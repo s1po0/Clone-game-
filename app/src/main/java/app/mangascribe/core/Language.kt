@@ -146,6 +146,9 @@ object Languages {
             engineCodes = mapOf(
                 EngineCodes.GOOGLE to "ku",
                 EngineCodes.MYMEMORY to "ku",
+                // Microsoft's `ku` is Central Kurdish (Sorani), not this language. Declaring it
+                // here would hand a Kurmanji reader Sorani text, which is a different language.
+                EngineCodes.MICROSOFT to EngineCodes.NONE,
                 EngineCodes.LIBRETRANSLATE to EngineCodes.NONE,
                 EngineCodes.LLM to "ku",
             ),

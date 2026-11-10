@@ -1,5 +1,6 @@
 package app.mangascribe.live
 
+import app.mangascribe.core.Languages
 import app.mangascribe.translate.MicrosoftResponseParser
 import app.mangascribe.translate.MicrosoftTranslateTranslator
 import app.mangascribe.translate.OkHttpHttp
@@ -20,6 +21,13 @@ import org.junit.Test
 class LiveMicrosoftTest {
 
     private val live = System.getenv("MANGASCRIBE_LIVE") == "1"
+
+    @Test
+    fun `sorani is sent as Microsoft's ku, not ckb`() {
+        // Measured on the endpoint: `to=ckb` is HTTP 400, `to=ku` is `سڵاو`.
+        assertEquals("ku", MicrosoftTranslateTranslator(OkHttpHttp()).codeFor(Languages.of("ckb")))
+        assertEquals(null, MicrosoftTranslateTranslator(OkHttpHttp()).codeFor(Languages.of("ku")))
+    }
 
     @Test
     fun `the reply shape is parsed`() {
