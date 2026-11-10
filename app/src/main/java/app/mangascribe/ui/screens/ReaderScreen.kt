@@ -2,6 +2,7 @@ package app.mangascribe.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -286,6 +287,20 @@ fun ReaderScreen(
                                 "No text found on this page",
                                 Modifier.align(Alignment.BottomCenter).padding(12.dp),
                             )
+                        } else {
+                            // What the device did, in one line. Long-press to dismiss; it is
+                            // small and at the bottom so it never covers the art.
+                            viewModel.lastDiagnosis.value?.let { line ->
+                                Text(
+                                    line,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier
+                                        .align(Alignment.BottomCenter)
+                                        .padding(horizontal = 12.dp, vertical = 4.dp)
+                                        .clickable { viewModel.lastDiagnosis.value = null },
+                                )
+                            }
                         }
                     }
                 }

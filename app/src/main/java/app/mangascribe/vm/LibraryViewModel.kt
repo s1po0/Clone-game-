@@ -266,6 +266,10 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
                         _toast.value = Toast("No text found on this page")
                         onDone(null, null)
                     } else {
+                        // The reader sees what happened, not just a result: which OCR model read
+                        // the page, what language it decided, and how many lines the engine
+                        // failed to translate. Guessing from screenshots ends here.
+                        lastDiagnosis.value = result.diagnosis
                         onDone(result.balloons.firstOrNull(), result.engine)
                     }
                 }
@@ -313,6 +317,9 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
             _translating.value = null
         }
     }
+
+    /** The one-line explanation of the last translation, shown under the reader. */
+    val lastDiagnosis = androidx.compose.runtime.mutableStateOf<String?>(null)
 
     /** Results of "Test translation" in Settings, newest first. */
     val selfTest = androidx.compose.runtime.mutableStateOf<List<app.mangascribe.translate.SelfTest.Step>>(emptyList())

@@ -38,6 +38,13 @@ data class PageTranslation(
     val balloons: List<Balloon>,
     val engine: String?,
     val elapsedMs: Long,
+    /**
+     * What actually happened, in one line, shown under the reader after a translation: the OCR
+     * model, the detected language, how many lines the engine returned, and how many were
+     * unfinished. Every previous round of "it does not work" was diagnosed from a screenshot by
+     * guessing; this line is the answer, produced by the device itself.
+     */
+    val diagnosis: String = "",
 )
 
 /**
@@ -314,7 +321,22 @@ class LibraryRepository(
                 w,
                 h,
             )
-            PageTranslation(page.id, balloons, translated.engineId, System.currentTimeMillis() - started)
+            PageTranslation(
+                page.id,
+                balloons,
+                translated.engineId,
+                System.currentTimeMillis() - started,
+                diagnosis = buildString {
+                    append("read by ").append(ocrResult.modelsUsed.joinToString("+").ifBlank { "?" })
+                    append(" as ").append(sourceLanguage)
+                    append(" → ").append(target)
+                    append(" · ").append(prepared.size).append(" lines")
+                    append(" · engine ").append(translated.engineId)
+                    append(" · ").append(translated.unfinished.size).append(" unfinished")
+                    val transliterated = lines.count { KurdishTransliteration.isTransliterated(it) }
+                    if (transliterated > 0) append(" · ").append(transliterated).append(" transliterated")
+                },
+            )
         } catch (t: kotlinx.coroutines.CancellationException) {
             // Stopped by the reader, or out of budget mid-OCR: the row must not stay "running"
             // or the page looks busy forever and the retry button is unreachable.
