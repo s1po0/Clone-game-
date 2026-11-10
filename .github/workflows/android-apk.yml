@@ -93,10 +93,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          APK=$(ls out/*.apk | head -1)
-          test -n "$APK"
+          ls -lh out/*.apk
           TAG="apk-${GITHUB_RUN_NUMBER}"
-          gh release create "$TAG" "$APK" \
+          # every split plus the universal one: the phone picks the smallest that fits
+          gh release create "$TAG" out/*.apk \
             --title "MangaScribe APK (build ${GITHUB_RUN_NUMBER})" \
             --notes "Debug APK built from \`${GITHUB_SHA:0:7}\` on ${GITHUB_REF_NAME}.
 
