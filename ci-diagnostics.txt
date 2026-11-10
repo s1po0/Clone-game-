@@ -1,10 +1,10 @@
 == exit summary ==
-e: The daemon has terminated unexpectedly on startup attempt #1 with error code: 0. The daemon process output:
-e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/translate/KeylessTranslator.kt:4:29 Conflicting import: imported name 'Language' is ambiguous.
-e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/translate/KeylessTranslator.kt:6:29 Conflicting import: imported name 'Language' is ambiguous.
-e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/translate/KeylessTranslator.kt:7:29 Unresolved reference 'TranslatedTextCleanups'.
-e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/translate/KeylessTranslator.kt:89:22 Unresolved reference 'Languages'.
-e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/translate/KeylessTranslator.kt:90:22 Unresolved reference 'Languages'.
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/translate/MicrosoftTranslator.kt:66:26 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/translate/MicrosoftTranslator.kt:66:38 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/translate/MicrosoftTranslator.kt:67:22 Unresolved reference 'withPermit'.
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/translate/MicrosoftTranslator.kt:68:40 Suspension functions can only be called within coroutine body.
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/translate/MicrosoftTranslator.kt:69:21 Suspension functions can only be called within coroutine body.
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/translate/MicrosoftTranslator.kt:74:30 Argument type mismatch: actual type is 'kotlin.Any', but 'kotlin.String' was expected.
 FAILURE: Build failed with an exception.
 * What went wrong:
 Caused by: org.gradle.workers.internal.DefaultWorkerExecutor$WorkExecutionException: A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction
@@ -89,5 +89,5 @@ Caused by: org.jetbrains.kotlin.gradle.tasks.CompilationErrorException: Compilat
 	... 2 more
 
 
-BUILD FAILED in 23s
-16 actionable tasks: 10 executed, 6 from cache
+BUILD FAILED in 30s
+16 actionable tasks: 5 executed, 11 from cache
