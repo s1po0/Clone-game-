@@ -11,6 +11,7 @@ import app.mangascribe.ocr.OcrOptions
 import app.mangascribe.render.PageRenderer
 import app.mangascribe.render.RenderStyle
 import app.mangascribe.translate.BatchPlanner
+import app.mangascribe.translate.CachedTranslator
 import app.mangascribe.translate.Glossary
 import app.mangascribe.translate.GoogleTranslateTranslator
 import app.mangascribe.translate.overlay
@@ -276,6 +277,14 @@ class LibraryRepository(
             // from the Kurd-man pipeline, where it was the cheapest quality win of all.
             deadEngines.addAll(batch.unreachable)
             val lines = Glossary.builtIn(target).overlay(texts, batch.lines)
+            // Store the finished pairs so a retry, a second read or the next chapter is local.
+            runCatching {
+                warmCache(
+                    batch.engineId, sourceLanguage, target,
+                    texts.indices.associate { texts[it] to lines[it] }
+                        .filterValues { it.isNotBlank() },
+                )
+            }
             val balloons = prepared.mapIndexed { i, block ->
                 Balloon.from(block, lines.getOrElse(i) { block.text })
                     .copy(maskOriginal = config.maskOriginal)
@@ -294,8 +303,20 @@ class LibraryRepository(
             )
             PageTranslation(page.id, balloons, batch.engineId, System.currentTimeMillis() - started)
         } catch (t: Throwable) {
-            dao.setStatus(page.id, PageEntity.Status.FAILED, t.message ?: t.javaClass.simpleName)
-            throw t
+            // Say what happened and what to do about it. The raw engine error ("MyMemory
+            // returned no text") is accurate and misleading: MyMemory is the fallback and has
+            // no Kurdish; the reader needs to know Google is the engine that matters here.
+            val message = if (t is app.mangascribe.translate.TranslationException) {
+                app.mangascribe.translate.EngineFailures.explain(
+                    tried = listOf("Google Translate" to t.message),
+                    targetLanguage = overrideTarget ?: book.targetLanguage,
+                    sourceLanguage = book.sourceLanguage,
+                )
+            } else {
+                t.message ?: t.javaClass.simpleName
+            }
+            dao.setStatus(page.id, PageEntity.Status.FAILED, message)
+            throw app.mangascribe.translate.TranslationException(message, t)
         }
     }
 
@@ -437,6 +458,9 @@ class LibraryRepository(
         deadEngines.clear()
     }
 
+    /** One cache for the whole app: a line translated on page 3 is free on page 90. */
+    private val translationCache by lazy { TranslationCache(context) }
+
     private fun engines(config: AppSettings): List<Translator> = buildList {
         // Google first: it is the default, and the only free engine with real Kurdish Sorani.
         add(GoogleTranslateTranslator(http))
@@ -459,7 +483,22 @@ class LibraryRepository(
                 )
             )
         }
+    }.map { CachedTranslator(it, translationCache) })
+
+    /**
+     * Save any line that was already translated before this build's cache existed, so an old
+     * chapter does not have to be sent to a server again just because caching is new.
+     */
+    suspend fun warmCache(engine: String, source: String, target: String, pairs: Map<String, String>) {
+        if (pairs.isEmpty()) return
+        translationCache.putAll(pairs.mapKeys { (text, _) ->
+            TranslationCache.key(engine, source, target, text)
+        })
     }
+
+    suspend fun cacheSize(): Int = translationCache.size()
+
+    suspend fun clearCache() = translationCache.clear()
 
     fun languageOf(code: String) = Languages.of(code)
 }

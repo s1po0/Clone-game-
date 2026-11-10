@@ -31,6 +31,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -197,6 +198,32 @@ fun SettingsScreen(viewModel: LibraryViewModel) {
                     "translate while offline for a page that is already done.",
                 style = MaterialTheme.typography.bodyMedium,
             )
+        }
+
+        Section("Translation memory") {
+            Text(
+                "Every finished line is kept in a local database. A line is translated once — "
+                    + "re-reading a chapter, retrying a page, or opening the next chapter costs no "
+                    + "requests for anything already seen. This is also why a chapter works with "
+                    + "the internet off after the first pass.",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            var cacheCount by remember { mutableStateOf<Int?>(null) }
+            LaunchedEffect(Unit) { cacheCount = viewModel.cacheSize() }
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    if (cacheCount == null) "Reading…" else "$cacheCount lines kept",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                TextButton(onClick = { viewModel.clearCache(); cacheCount = 0 }) {
+                    Text("Clear")
+                }
+            }
         }
 
         // "Did the update install?" should be answerable without guessing: the build number is

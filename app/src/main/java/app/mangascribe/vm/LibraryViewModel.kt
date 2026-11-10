@@ -228,6 +228,15 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
     }
 
+    suspend fun cacheSize(): Int = repository.cacheSize()
+
+    fun clearCache() {
+        viewModelScope.launch {
+            repository.clearCache()
+            _toast.value = Toast("Translation memory cleared")
+        }
+    }
+
     /** A manual retry is also a chance for a host that was down to come back. */
     private fun refreshEngines() = repository.resetEngineHealth()
 
