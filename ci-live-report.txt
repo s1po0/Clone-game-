@@ -1,8 +1,9 @@
 == live endpoint test ==
-> Task :app:compileDebugUnitTestKotlin FAILED
-BUILD FAILED in 41s
+    LIVE google: سڵاو
+    LIVE echo-check: [ئەمە چییە بە گێلی ڕاستەقینە؟!]
+    LIVE clients5: ["سڵاو"]
+    LIVE lingva: HTTP 400: {
+    LIVE page: [تۆ کێی؟, ئەمە چیە؟, ڕاکردن!]
+BUILD SUCCESSFUL in 1m
 
 == compile status ==
-e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/test/java/app/mangascribe/core/TranslationLogicTest.kt:27:31 Overload resolution ambiguity between candidates:
-e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/test/java/app/mangascribe/core/TranslationLogicTest.kt:28:30 'operator' modifier is required on 'FirNamedFunctionSymbol kotlin/compareTo' in 'compareTo'.
-BUILD FAILED in 41s
