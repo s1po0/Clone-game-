@@ -86,6 +86,23 @@ If the four secrets are missing, the APKs fall back to the project key
 that project key, so if you add the secrets later, expect one backup-and-restore step for anyone
 who installed before.
 
+## 4b. Turning the key on: what happens to installs made before
+
+Adding the secrets changes the app's signer. Android only accepts an update from the *same*
+signer, so the first build made with your key cannot install over an APK signed with the project
+key. That is a one-time step, and it costs nothing if you do it in this order:
+
+1. Add the four secrets.
+2. On the phone, **Settings → Backup and moving to a new build → Export backup** and save the
+   zip somewhere off the phone (or share it to yourself).
+3. Uninstall the old app.
+4. Install the new APK (`apk-<n>` from the same workflow run — it is now signed with your key).
+5. **Settings → Restore from a backup**, pick the zip. Library, translations and pages return;
+   API keys are device-bound and must be re-entered (the app says so).
+
+From then on no one ever has to do that again: every build, from GitHub or from Play, carries
+the same key and installs in place.
+
 ## 5. Publishing, if and when you want to
 
 1. Play Console → **Create app** → name, default language, app, free.
