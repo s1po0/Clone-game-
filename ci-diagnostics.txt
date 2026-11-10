@@ -1,10 +1,63 @@
 == exit summary ==
-e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/translate/MicrosoftTranslator.kt:66:26 Cannot infer type for this parameter. Please specify it explicitly.
-e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/translate/MicrosoftTranslator.kt:66:38 Cannot infer type for this parameter. Please specify it explicitly.
-e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/translate/MicrosoftTranslator.kt:67:22 Unresolved reference 'withPermit'.
-e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/translate/MicrosoftTranslator.kt:68:40 Suspension functions can only be called within coroutine body.
-e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/translate/MicrosoftTranslator.kt:69:21 Suspension functions can only be called within coroutine body.
-e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/translate/MicrosoftTranslator.kt:74:30 Argument type mismatch: actual type is 'kotlin.Any', but 'kotlin.String' was expected.
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:64:9 Unresolved reference 'Section'.
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:65:13 @Composable invocations can only happen from the context of a @Composable function
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:66:17 Unresolved reference 'LanguagePicker'.
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:69:36 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:75:17 Unresolved reference 'LanguagePicker'.
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:78:36 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:82:13 @Composable invocations can only happen from the context of a @Composable function
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:84:39 @Composable invocations can only happen from the context of a @Composable function
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:85:39 @Composable invocations can only happen from the context of a @Composable function
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:89:9 Unresolved reference 'Section'.
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:89:37 Unresolved reference 'SliderRow'.
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:90:13 Unresolved reference 'ToggleRow'.
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:94:17 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:95:13 Unresolved reference 'ToggleRow'.
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:99:17 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:100:13 Unresolved reference 'ToggleRow'.
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:104:17 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:105:13 Unresolved reference 'SliderRow'.
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:109:30 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:113:9 Unresolved reference 'Section'.
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:113:38 Unresolved reference 'ToggleRow'.
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:114:13 Unresolved reference 'ToggleRow'.
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:119:17 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:120:13 Unresolved reference 'ToggleRow'.
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:125:17 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:126:13 Unresolved reference 'ToggleRow'.
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:130:17 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:133:9 Unresolved reference 'Section'.
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:134:13 @Composable invocations can only happen from the context of a @Composable function
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:135:13 @Composable invocations can only happen from the context of a @Composable function
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:140:39 @Composable invocations can only happen from the context of a @Composable function
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:141:39 @Composable invocations can only happen from the context of a @Composable function
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:145:9 Unresolved reference 'Section'.
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:146:13 @Composable invocations can only happen from the context of a @Composable function
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:150:39 @Composable invocations can only happen from the context of a @Composable function
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:151:39 @Composable invocations can only happen from the context of a @Composable function
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:153:58 @Composable invocations can only happen from the context of a @Composable function
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:156:13 @Composable invocations can only happen from the context of a @Composable function
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:167:17 @Composable invocations can only happen from the context of a @Composable function
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:171:43 @Composable invocations can only happen from the context of a @Composable function
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:172:43 @Composable invocations can only happen from the context of a @Composable function
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:177:9 Unresolved reference 'Section'.
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:178:13 @Composable invocations can only happen from the context of a @Composable function
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:182:39 @Composable invocations can only happen from the context of a @Composable function
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:186:9 Unresolved reference 'Section'.
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:187:13 @Composable invocations can only happen from the context of a @Composable function
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:192:39 @Composable invocations can only happen from the context of a @Composable function
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:193:39 @Composable invocations can only happen from the context of a @Composable function
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:195:31 @Composable invocations can only happen from the context of a @Composable function
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:196:13 @Composable invocations can only happen from the context of a @Composable function
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:197:13 @Composable invocations can only happen from the context of a @Composable function
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:214:9 Unresolved reference 'Section'.
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:215:40 @Composable invocations can only happen from the context of a @Composable function
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:216:31 @Composable invocations can only happen from the context of a @Composable function
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:221:13 @Composable invocations can only happen from the context of a @Composable function
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:223:39 @Composable invocations can only happen from the context of a @Composable function
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:225:13 @Composable invocations can only happen from the context of a @Composable function
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:230:39 @Composable invocations can only happen from the context of a @Composable function
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/SettingsScreen.kt:231:39 @Composable invocations can only happen from the context of a @Composable function
 FAILURE: Build failed with an exception.
 * What went wrong:
 Caused by: org.gradle.workers.internal.DefaultWorkerExecutor$WorkExecutionException: A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction
@@ -89,5 +142,5 @@ Caused by: org.jetbrains.kotlin.gradle.tasks.CompilationErrorException: Compilat
 	... 2 more
 
 
-BUILD FAILED in 30s
+BUILD FAILED in 24s
 16 actionable tasks: 5 executed, 11 from cache
