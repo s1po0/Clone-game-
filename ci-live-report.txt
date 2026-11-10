@@ -1,9 +1,38 @@
 == live endpoint test ==
     LIVE google: سڵاو
     LIVE echo-check: [ئەمە چییە بە گێلی ڕاستەقینە؟!]
-    LIVE clients5: ["سڵاو"]
-    LIVE lingva: HTTP 400: {
+    LIVE clients5: [""]
+LiveEndpointTest > google dictionary and lingva routes are probed so a dead one is known FAILED
     LIVE page: [تۆ کێی؟, ئەمە چیە؟, ڕاکردن!]
-BUILD SUCCESSFUL in 1m
+    RAW-en (engine answered):
+       EN  | THEY SAY THE SPELL VALUES BALANCE AS MUCH AS CHA
+       KU  | دەڵێن بەهاکانی سپێڵ بەقەد تەحەدا هاوسەنگ دەبن.
+       FIN | دەڵێن بەهاکانی سپێڵ بەقەد تەحەدا هاوسەنگ دەبن.
+           | transliterated=false leftover=false
+       EN  | SO I SHOULD AT LEAST GET A STRONG ASPECT OUT OF 
+       KU  | کەواتە لانیکەم دەبێ لایەنێکی بەهێز لەمەوە دەربهێنم، ڕاستە؟
+       FIN | کەواتە لانیکەم دەبێ لایەنێکی بەهێز لەمەوە دەربهێنم، ڕاستە؟
+           | transliterated=false leftover=false
+       EN  | ASPECT: TEMPLE SLAVE
+       KU  | لایەن: کۆیلەی پەرستگا
+       FIN | لایەن: کۆیلەی پەرستگا
+           | transliterated=false leftover=false
+       EN  | ASPECT DESCRIPTION: A SLAVE IS A USELESS WRETCH 
+       KU  | وەسفکردنی لایەن: کۆیلە بەدبەختێکی بێسوودە و هیچ لێهاتوویی و توانایەکی بەرچاوی نییە. کۆیلەیەکی پەرستگا زۆر دەگمەنترە، بەڵام بە هەمان شێوە بێ بەهایە.
+       FIN | وەسفکردنی لایەن: کۆیلە بەدبەختێکی بێسوودە و هیچ لێهاتوویی و توانایەکی بەرچاوی نییە. کۆیلەیەکی پەرستگا زۆر دەگمەنترە، بەڵام بە هەمان شێوە بێ بەهایە.
+           | transliterated=false leftover=false
+       EN  | WHAT?! WHAT THE ACTUAL FUCK IS THIS?!
+       KU  | چی؟! ئەمە چ گێلییە ڕاستەقینەکە؟!
+       FIN | چی؟! ئەمە چ گێلییە ڕاستەقینەکە؟!
+           | transliterated=false leftover=false
+       EN  | "THERE ARE NO USELESS ASPECTS," HUH?
+       KU  | "هیچ لایەنێکی بێسوود نییە"، ها؟
+       FIN | "هیچ لایەنێکی بێسوود نییە"، ها؟
+           | transliterated=false leftover=false
+    RAW-auto (engine answered):
+> Task :app:testDebugUnitTest FAILED
+7 tests completed, 1 failed
+BUILD FAILED in 50s
 
 == compile status ==
+BUILD FAILED in 50s
