@@ -58,25 +58,27 @@ class GoogleTranslateTranslator(
         val out = MutableList(texts.size) { texts[it] }
         val failures = mutableListOf<String>()
 
+        // Kotlin refuses a `return@launch` inside a `runCatching` lambda, so the suspended
+        // call is wrapped in a plain try/catch instead.
         kotlinx.coroutines.coroutineScope {
             texts.forEachIndexed { index, raw ->
                 val line = raw.trim()
                 if (line.isEmpty()) return@forEachIndexed
                 kotlinx.coroutines.launch {
-                    val key = "$sl|$tl|$line"
+                    val key = sl + "|" + tl + "|" + line
                     val cached = synchronized(cacheLock) { cache[key] }
                     if (cached != null) {
                         out[index] = cached
                         return@launch
                     }
-                    val translated = runCatching { requestWithRetry(line, sl, tl) }
-                        .getOrElse { error ->
-                            synchronized(cacheLock) { failures += (error.message ?: "error") }
-                            return@launch
+                    try {
+                        val translated = requestWithRetry(line, sl, tl)
+                        if (translated.isNotBlank()) {
+                            out[index] = translated
+                            synchronized(cacheLock) { cache[key] = translated }
                         }
-                    if (translated.isNotBlank()) {
-                        out[index] = translated
-                        synchronized(cacheLock) { cache[key] = translated }
+                    } catch (error: Throwable) {
+                        synchronized(cacheLock) { failures += (error.message ?: "error") }
                     }
                 }
             }
