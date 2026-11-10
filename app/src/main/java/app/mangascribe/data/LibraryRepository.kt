@@ -271,7 +271,24 @@ class LibraryRepository(
             val target = overrideTarget ?: book.targetLanguage
             val texts = prepared.map { it.text.replace("\n", " ") }
             val pipeline = TranslationPipeline(engines(config), config.engineId)
-            val batch = pipeline.translate(texts, sourceLanguage, target, deadEngines.toList())
+            // Repeated bubbles ("What?!" twice on a page, the same system label on every page)
+            // cost one request, not three — the same dedupe Kurd-man's translate_many does.
+            val unique = texts.map { it.trim() }.distinct().filter { it.isNotEmpty() }
+            val uniqueBatch = if (unique.size == texts.size) {
+                pipeline.translate(texts, sourceLanguage, target, deadEngines.toList())
+            } else {
+                pipeline.translate(unique, sourceLanguage, target, deadEngines.toList())
+            }
+            val index = unique.withIndex().associate { (i, text) -> text to i }
+            val batch = if (unique.size == texts.size) {
+                uniqueBatch
+            } else {
+                uniqueBatch.copy(
+                    lines = texts.map { text ->
+                        uniqueBatch.lines.getOrNull(index[text.trim()] ?: -1) ?: text
+                    },
+                )
+            }
             // The glossary wins over the engine on known lines: "What?!" and "Run!" then read
             // the same on every page of a chapter instead of drifting per request. Borrowed
             // from the Kurd-man pipeline, where it was the cheapest quality win of all.
