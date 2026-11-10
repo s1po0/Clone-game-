@@ -64,7 +64,7 @@ jobs:
           wc -l out/diagnostics.txt
 
       - name: Unit tests
-        run: ./gradlew :app:testDebugUnitTest --no-daemon --stacktrace
+        run: ./gradlew :app:testDebugUnitTest --no-daemon --stacktrace 2>&1 | tee build-test.log
 
       - name: Assemble debug APK
         run: ./gradlew :app:assembleDebug --no-daemon --stacktrace
