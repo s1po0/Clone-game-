@@ -199,8 +199,14 @@ fun ReaderScreen(
             if (currentPage != null) {
                 ExtendedFloatingActionButton(
                     onClick = {
-                        viewModel.translatePage(bookId, currentPage.index) { _, _ ->
-                            viewModel.loadBalloons(currentPage.id) { balloonsByPage[currentPage.id] = it }
+                        if (translating != null) {
+                            viewModel.cancelTranslation()
+                        } else {
+                            viewModel.translatePage(bookId, currentPage.index) { _, _ ->
+                                viewModel.loadBalloons(currentPage.id) {
+                                    balloonsByPage[currentPage.id] = it
+                                }
+                            }
                         }
                     },
                     icon = {
@@ -216,10 +222,12 @@ fun ReaderScreen(
                     },
                     text = {
                         Text(
-                            when (currentPage.status) {
-                                PageEntity.Status.DONE -> "Translate again"
-                                PageEntity.Status.FAILED -> "Retry"
-                                PageEntity.Status.RUNNING -> "Reading…"
+                            when {
+                                // Whatever the page status says, a running translation is the
+                                // truth: the button must offer a way out, not a dead spinner.
+                                translating != null -> "Stop"
+                                currentPage.status == PageEntity.Status.DONE -> "Translate again"
+                                currentPage.status == PageEntity.Status.FAILED -> "Retry"
                                 else -> "Translate page"
                             }
                         )

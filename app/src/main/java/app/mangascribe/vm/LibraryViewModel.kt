@@ -240,11 +240,25 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
     /** A manual retry is also a chance for a host that was down to come back. */
     private fun refreshEngines() = repository.resetEngineHealth()
 
+    private var translationJob: kotlinx.coroutines.Job? = null
+
+    /** Stops the page that is running, so a stuck translation is never a dead end. */
+    fun cancelTranslation() {
+        translationJob?.cancel()
+        translationJob = null
+        _translating.value = null
+        _toast.value = Toast("Stopped. Tap Translate to try again.")
+    }
+
     fun translatePage(bookId: Long, index: Int, onDone: (Balloon?, String?) -> Unit = { _, _ -> }) {
         if (_translating.value != null) return
         refreshEngines()
         viewModelScope.launch {
             _translating.value = "Reading the page"
+            // The job is kept so the reader can stop a page that is stuck (a blocked network
+            // with retries can otherwise look like a hang).
+            translationJob = coroutineContext[kotlinx.coroutines.Job]
+            // A cancelled page must not report a failure toast: stopping is not an error.
             runCatching { repository.translatePage(bookId, index) }
                 .onSuccess { result: PageTranslation ->
                     _translating.value = null
@@ -257,8 +271,12 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
                 }
                 .onFailure {
                     _translating.value = null
-                    _toast.value = Toast(it.message ?: "Translation failed")
-                    onDone(null, null)
+                    if (it is kotlinx.coroutines.CancellationException) {
+                        onDone(null, null)
+                    } else {
+                        _toast.value = Toast(it.message ?: "Translation failed")
+                        onDone(null, null)
+                    }
                 }
         }
     }

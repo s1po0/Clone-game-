@@ -15,10 +15,16 @@ interface Http {
 }
 
 class OkHttpHttp(
+    /**
+     * Short timeouts on purpose. A page makes several requests through a rotation of hosts; a
+     * single host that silently drops packets must cost seconds, not a minute and a half, or the
+     * reader sits on "Reading the page" while one dead endpoint holds the whole page.
+     */
     private val client: OkHttpClient = OkHttpClient.Builder()
-        .connectTimeout(20, TimeUnit.SECONDS)
-        .readTimeout(60, TimeUnit.SECONDS)
-        .callTimeout(90, TimeUnit.SECONDS)
+        .connectTimeout(8, TimeUnit.SECONDS)
+        .readTimeout(12, TimeUnit.SECONDS)
+        .callTimeout(20, TimeUnit.SECONDS)
+        .retryOnConnectionFailure(true)
         .build(),
 ) : Http {
     private val json = "application/json; charset=utf-8".toMediaType()

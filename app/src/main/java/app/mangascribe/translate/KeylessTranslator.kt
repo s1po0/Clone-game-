@@ -71,26 +71,30 @@ class KeylessTranslateTranslator(
         val failures = mutableListOf<String>()
         var dead = emptyList<String>()
 
-        // One host per line at first, in rotation, so a single rate-limited host does not stall
-        // the page; the whole page then retries through the remaining hosts if it failed.
+        // One coroutine per line, and the semaphore lives *only* inside tryRotation.
+        //
+        // It used to be taken twice — once here and once per request — which is a deadlock with a
+        // bounded semaphore: three permits held by three lines that are each waiting for a fourth.
+        // That is exactly the "Reading the page" that never finishes. One permit per in-flight
+        // request now, no nesting.
+        val unreachable = java.util.Collections.synchronizedSet(mutableSetOf<String>())
         kotlinx.coroutines.coroutineScope {
             val jobs = texts.mapIndexed { index, raw ->
                 val line = raw.trim()
                 if (line.isEmpty()) return@mapIndexed null
                 launch {
-                    gate.withPermit {
-                        val attempt = tryRotation(line, sl, tl)
-                        if (attempt.text != null) {
-                            out[index] = attempt.text
-                        } else {
-                            synchronized(failures) { failures += attempt.reason ?: "no answer" }
-                        }
-                        if (attempt.dead.isNotEmpty()) dead = attempt.dead
+                    val attempt = tryRotation(line, sl, tl)
+                    if (attempt.text != null) {
+                        out[index] = attempt.text
+                    } else {
+                        synchronized(failures) { failures += attempt.reason ?: "no answer" }
                     }
+                    unreachable.addAll(attempt.dead)
                 }
             }
             jobs.forEach { it?.join() }
         }
+        dead = unreachable.toList()
 
         if (out.indices.all { out[it] == texts[it] } && texts.any { it.isNotBlank() }) {
             throw TranslationException(

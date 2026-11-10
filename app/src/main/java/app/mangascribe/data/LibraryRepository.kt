@@ -25,6 +25,7 @@ import app.mangascribe.translate.OpenAiCompatibleTranslator
 import app.mangascribe.translate.Translator
 import app.mangascribe.translate.TranslationPipeline
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -273,7 +274,16 @@ class LibraryRepository(
             }
             val target = overrideTarget ?: book.targetLanguage
             val texts = prepared.map { it.text.replace("\n", " ") }
-            val translated = translateLines(texts, sourceLanguage, target, config)
+            // A page must finish or fail, never hang: every engine has retries, and retries over
+            // a blocked network can add up. The budget is generous for a real chapter and short
+            // enough that the reader sees a reason instead of a spinner.
+            val translated = withTimeoutOrNull(PAGE_TRANSLATION_BUDGET_MS) {
+                translateLines(texts, sourceLanguage, target, config)
+            } ?: throw TranslationException(
+                "Translation took too long (over ${PAGE_TRANSLATION_BUDGET_MS / 1000} seconds). " +
+                    "The engines may be blocked on this network — check the connection, then " +
+                    "tap Translate again. Anything already translated for this page is kept.",
+            )
             val lines = translated.lines
             val balloons = prepared.mapIndexed { i, block ->
                 Balloon.from(block, lines.getOrElse(i) { block.text })
@@ -292,6 +302,11 @@ class LibraryRepository(
                 h,
             )
             PageTranslation(page.id, balloons, translated.engineId, System.currentTimeMillis() - started)
+        } catch (t: kotlinx.coroutines.CancellationException) {
+            // Stopped by the reader, or out of budget mid-OCR: the row must not stay "running"
+            // or the page looks busy forever and the retry button is unreachable.
+            dao.setStatus(page.id, PageEntity.Status.FAILED, "Stopped before it finished")
+            throw t
         } catch (t: Throwable) {
             // Say what happened and what to do about it. The raw engine error ("MyMemory
             // returned no text") is accurate and misleading: MyMemory is the fallback and has
@@ -549,6 +564,15 @@ class LibraryRepository(
     suspend fun clearCache() = translationCache.clear()
 
     fun languageOf(code: String) = Languages.of(code)
+
+    companion object {
+        /**
+         * How long one page may spend in the engines before the reader is told something is
+         * wrong. Generous — a chapter of status boxes with retries can take a while — but the
+         * app must never sit on "Reading the page" forever.
+         */
+        const val PAGE_TRANSLATION_BUDGET_MS = 90_000L
+    }
 }
 
 object ExportProvider {
