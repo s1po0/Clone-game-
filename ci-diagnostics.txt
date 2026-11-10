@@ -1,5 +1,6 @@
 == exit summary ==
-e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/core/Language.kt:386:63 Unresolved reference 'isPunctuation'.
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/translate/Glossary.kt:111:49 Variable 'KURDISH' must be initialized.
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/translate/Glossary.kt:111:67 Variable 'NAMES' must be initialized.
 FAILURE: Build failed with an exception.
 * What went wrong:
 Caused by: org.gradle.workers.internal.DefaultWorkerExecutor$WorkExecutionException: A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction
@@ -84,5 +85,5 @@ Caused by: org.jetbrains.kotlin.gradle.tasks.CompilationErrorException: Compilat
 	... 2 more
 
 
-BUILD FAILED in 26s
+BUILD FAILED in 23s
 16 actionable tasks: 10 executed, 6 from cache
