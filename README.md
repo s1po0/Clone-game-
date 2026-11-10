@@ -69,16 +69,40 @@ Three translation back-ends, picked in Settings, with automatic fallback:
 Recognition is always ML Kit on-device (Japanese, Chinese, Korean, Devanagari and Latin models,
 run together when a page mixes scripts).
 
+## Download the APK
+
+Every push to this branch builds a debug APK on GitHub Actions and publishes it as a release:
+
+**https://github.com/s1po0/Clone-game-/releases/latest**
+
+| File | Use it when |
+|---|---|
+| `app-arm64-v8a-debug.apk` | almost every phone made since 2016 — **start here** (~33 MB) |
+| `app-armeabi-v7a-debug.apk` | older 32-bit devices (~29 MB) |
+| `app-x86_64-debug.apk` | emulators and x86 tablets (~34 MB) |
+| `app-universal-debug.apk` | unsure, or sideloading onto several phones (~62 MB) |
+
+Install: download on the phone, tap the file, allow *Install unknown apps* for the browser or
+file manager if Android asks, then install. Android 8.0 (API 26) or newer.
+
+The build is debug-signed, not Play-Store-signed: fine for your own device and for testing,
+not for publishing. It calls MyMemory and any model endpoint you configure, so it needs internet.
+
 ## Build
 
 Requirements: JDK 17, Android SDK 35, and a device or emulator on API 26+ — or open the folder
 in Android Studio (Ladybug or newer), which downloads the SDK for you.
 
 ```bash
-./gradlew :app:assembleDebug          # APK at app/build/outputs/apk/debug/
+./gradlew :app:assembleDebug          # APKs under app/build/outputs/apk/debug/
 ./gradlew :app:testDebugUnitTest      # pure-logic tests (no device needed)
 ./gradlew :app:installDebug           # install on a connected phone
 ```
+
+CI does exactly this on every push: `.github/workflows/android-apk.yml` (JDK 17, SDK 35,
+per-ABI splits, unit tests, release upload). `ci-diagnostics.txt` at the repository root is
+written by that workflow when a build fails, so a compiler error or a failing test can be read
+without opening the Actions log.
 
 The pure logic — wrapping and fitting, furigana cleanup, block merging and reading order,
 prompt parsing, batching, balloon JSON — has no Android dependency and is covered by unit
