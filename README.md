@@ -176,6 +176,14 @@ Other apps cannot read the file (private storage), root-only tools on a rooted p
 that point no app-level protection helps, which is why the app also keeps the key's scope
 narrow: one endpoint, and nothing else.
 
+## Reading quality
+
+Long webtoon strips are drawn at their true height (they used to be clipped into a fixed row),
+line spacing uses the font's real metrics, Kurdish renders through a bundled Noto Naskh so no
+letter depends on the phone's fallback fonts, known lines come from a glossary, and an
+untranslated English line is never painted inside a Kurdish bubble. The full list of fixes, with
+causes and tests: **[docs/reading-quality.md](docs/reading-quality.md)**.
+
 ## Coming from Kurd-man
 
 This app and [`s1po0/Kurd-man`](https://github.com/s1po0/Kurd-man) solve different problems — a
