@@ -227,7 +227,8 @@ fun ReaderScreen(
                             Modifier.align(Alignment.BottomCenter).padding(12.dp),
                         )
                         PageEntity.Status.FAILED -> StatusChip(
-                            "Could not translate: ${page.error ?: "unknown error"}",
+                            "Could not translate — ${page.error ?: "unknown error"}. " +
+                                "Tap Translate again to retry.",
                             Modifier.align(Alignment.BottomCenter).padding(12.dp),
                         )
                         PageEntity.Status.DONE -> if (balloons.isEmpty()) {

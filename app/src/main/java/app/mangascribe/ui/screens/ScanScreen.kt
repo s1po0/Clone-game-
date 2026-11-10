@@ -176,6 +176,15 @@ fun ScanScreen(viewModel: LibraryViewModel) {
                 Text("Engine: $engine", style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
+        } else if (page?.status == PageEntity.Status.FAILED) {
+            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
+                Text(
+                    page?.error ?: "The page could not be translated",
+                    modifier = Modifier.padding(14.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onErrorContainer,
+                )
+            }
         } else if (page?.status == PageEntity.Status.DONE) {
             Box(Modifier.fillMaxWidth().height(160.dp), contentAlignment = Alignment.Center) {
                 Text("No text was found in that picture. Try a sharper screenshot.")

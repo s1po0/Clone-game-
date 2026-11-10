@@ -24,6 +24,8 @@ object DemoPage {
         val dir = File(context.filesDir, "demo").apply { mkdirs() }
         val out = File(dir, "sample-page.png")
         if (out.exists() && out.length() > 0) return out
+        // A zero-length leftover (a crash mid-write on a previous run) is rebuilt, not reused.
+        if (out.exists()) out.delete()
         val bitmap = draw()
         FileOutputStream(out).use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
         bitmap.recycle()

@@ -2,6 +2,7 @@ package app.mangascribe.ocr
 
 import android.content.Context
 import android.graphics.Bitmap
+import app.mangascribe.data.PageImages
 import app.mangascribe.core.BlockMerger
 import app.mangascribe.core.Geometry
 import app.mangascribe.core.Languages
@@ -32,6 +33,13 @@ data class OcrOptions(
     val upscaleBelowWidth: Int = 1100,
     /** Ignore detections smaller than this many pixels of height (scan noise, dust). */
     val minBlockHeightPx: Float = 6f,
+    /**
+     * Walk a very tall strip in bands instead of decoding it whole. A 12000 px webtoon page
+     * at OCR resolution is 200+ MB as one bitmap; banding keeps each pass inside a phone's
+     * memory and is why long strips used to fail with a decode error.
+     */
+    val bandHeightPx: Int = 1600,
+    val bandOverlapPx: Int = 160,
 )
 
 data class OcrResult(
@@ -40,6 +48,30 @@ data class OcrResult(
     val modelsUsed: List<String>,
     val elapsedMs: Long,
 )
+
+/** Where a page comes from, so OCR can choose whole-image or banded reading. */
+sealed class ImageSource {
+    /** Page width and height in page pixels, before any sampling. */
+    abstract val width: Int
+    abstract val height: Int
+    abstract suspend fun load(upscaleBelowWidth: Int): Bitmap?
+
+    class BitmapSource(private val source: Bitmap) : ImageSource() {
+        override val width: Int get() = source.width
+        override val height: Int get() = source.height
+        override suspend fun load(upscaleBelowWidth: Int): Bitmap = source
+    }
+
+    class FileSource(
+        val context: Context,
+        val uriString: String,
+        override val width: Int,
+        override val height: Int,
+    ) : ImageSource() {
+        override suspend fun load(upscaleBelowWidth: Int): Bitmap? =
+            PageImages.decode(context, uriString, PageImages.OCR_TARGET_WIDTH)
+    }
+}
 
 interface OcrEngine {
     suspend fun recognize(
@@ -74,46 +106,94 @@ class MlKitOcrEngine(private val context: Context) : OcrEngine {
         bitmap: Bitmap,
         languageCode: String,
         options: OcrOptions,
+    ): OcrResult = recognizeSource(ImageSource.BitmapSource(bitmap), languageCode, options)
+
+    /**
+     * Read a page from anywhere: an already-decoded bitmap, or an on-disk image that can be
+     * cropped in bands. The band walk is what lets a very long strip be recognised at all:
+     * decoding a 12000 px webtoon page whole, at OCR resolution, is an out-of-memory crash on
+     * a phone — which used to surface as "the page image could not be read".
+     */
+    suspend fun recognizeSource(
+        source: ImageSource,
+        languageCode: String,
+        options: OcrOptions = OcrOptions(),
     ): OcrResult {
         val started = System.currentTimeMillis()
-        val prepared = prepare(bitmap, options.upscaleBelowWidth)
-        val scale = prepared.second
         val models = Languages.ocrModelsFor(languageCode)
         val collected = mutableListOf<TextBlock>()
 
-        for (model in models) {
-            val blocks = recognizeWithModel(prepared.first, model)
-            collected += blocks.map { it.scaleBack(scale) }
-            // A script model that already found plenty of text does not need the Latin pass
-            // to add noise on top; the Latin pass is for sfx and signage.
-            if (model != "latin" && collected.size > 24) break
+        val banding = source is ImageSource.FileSource &&
+            PageImages.needsBanding(source.width, source.height)
+
+        if (!banding) {
+            val bitmap = source.load(options.upscaleBelowWidth)
+                ?: throw PageImages.UnreadablePageException(
+                    "The page image could not be read for text recognition."
+                )
+            val scale = if (bitmap.width > 0) source.width.toFloat() / bitmap.width else 1f
+            for (model in models) {
+                collected += recognizeWithModel(bitmap, model).map { it.scaleBack(1f / scale) }
+                if (model != "latin" && collected.size > 24) break
+            }
+            return finish(collected, languageCode, options, models, started)
         }
 
-        val joined = collected.joinToString(" ") { it.text }
-        val detected = Languages.detect(joined)
+        val fileSource = source as ImageSource.FileSource
+        var top = 0
+        val step = (options.bandHeightPx - options.bandOverlapPx).coerceAtLeast(400)
+        var guard = 0
+        while (top < fileSource.height && guard++ < 120) {
+            val band = PageImages.decodeBand(
+                fileSource.context,
+                fileSource.uriString,
+                top,
+                options.bandHeightPx,
+                PageImages.OCR_TARGET_WIDTH,
+            ) ?: break
+            // A band is in page pixels already; decodeBand samples by the same factor the
+            // whole page would have used, so coordinates only need the band's own offset.
+            for (model in models) {
+                val found = recognizeWithModel(band, model)
+                collected += found.map { block ->
+                    block.copy(
+                        polygon = block.polygon.map { PointF(it.x, it.y + top) },
+                    )
+                }
+                if (model != "latin" && collected.size > 24) break
+            }
+            band.recycle()
+            top += step
+            if (top + options.bandOverlapPx >= fileSource.height) break
+        }
+        return finish(collected, languageCode, options, models, started)
+    }
 
-        var filtered = collected
+    /** Everything after recognition: language, junk, merging, cleaning. Shared by both paths. */
+    private fun finish(
+        raw: List<TextBlock>,
+        languageCode: String,
+        options: OcrOptions,
+        models: List<String>,
+        started: Long,
+    ): OcrResult {
+        val joined = raw.joinToString(" ") { it.text }
+        val detected = Languages.detect(joined)
+        var filtered = raw
             .filter { !options.dropJunk || !OcrCleanup.isJunk(it.text) }
             .filter { it.bounds.height >= options.minBlockHeightPx &&
                 it.bounds.width >= options.minBlockHeightPx }
-
         if (options.mergeBlocks) {
             filtered = BlockMerger.merge(
                 filtered,
                 BlockMerger.MergeOptions(languageCode = detected ?: languageCode),
             )
         }
-
         filtered = filtered.mapNotNull { block ->
-            val cleaned = OcrCleanup.clean(
-                block.text,
-                detected ?: languageCode,
-                options.stripFurigana,
-            )
+            val cleaned = OcrCleanup.clean(block.text, detected ?: languageCode, options.stripFurigana)
             if (cleaned.isBlank() || (options.dropJunk && OcrCleanup.isJunk(cleaned))) null
             else block.copy(text = cleaned)
         }.mapIndexed { index, block -> block.copy(id = index) }
-
         return OcrResult(
             blocks = filtered,
             detectedLanguage = detected,

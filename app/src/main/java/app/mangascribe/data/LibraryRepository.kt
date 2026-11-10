@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.net.Uri
 import app.mangascribe.core.Languages
 import app.mangascribe.core.TextBlock
+import app.mangascribe.ocr.ImageSource
 import app.mangascribe.ocr.MlKitOcrEngine
 import app.mangascribe.ocr.OcrOptions
 import app.mangascribe.render.PageRenderer
@@ -43,6 +44,13 @@ class LibraryRepository(
 ) {
     private val renderer = PageRenderer()
 
+    /** Shown once after an import that lost some files, instead of failing later. */
+    @Volatile
+    var lastImportWarning: String? = null
+        private set
+
+    fun clearImportWarning() { lastImportWarning = null }
+
     fun books(): Flow<List<BookEntity>> = dao.observeAll()
     fun favorites(): Flow<List<BookEntity>> = dao.observeFavorites()
     fun book(id: Long): Flow<BookEntity?> = dao.observe(id)
@@ -61,18 +69,25 @@ class LibraryRepository(
     ): Long = withContext(Dispatchers.IO) {
         val current = settings.current()
         val now = System.currentTimeMillis()
+        require(files.isNotEmpty()) { "There are no pages to import" }
+        // Verify every page before a book is created: a silently missing file turns into
+        // "the page image could not be read" at translate time, which is too late to explain.
+        val usable = files.filter { it.exists() && it.length() > 0 }
+        require(usable.isNotEmpty()) {
+            "None of the selected files could be read (they are empty or were moved)."
+        }
         val bookId = dao.insert(
             BookEntity(
                 title = title,
                 sourceLanguage = sourceLanguage ?: current.sourceLanguage,
                 targetLanguage = targetLanguage ?: current.targetLanguage,
                 origin = origin,
-                coverPath = files.firstOrNull()?.let { "file://" + it.absolutePath },
+                coverPath = "file://" + usable.first().absolutePath,
                 createdAt = now,
                 updatedAt = now,
             )
         )
-        val pages = files.mapIndexed { index, file ->
+        val pages = usable.mapIndexed { index, file ->
             PageEntity(bookId = bookId, index = index, imageUri = "file://" + file.absolutePath)
         }
         dao.insertPages(pages)
@@ -90,14 +105,34 @@ class LibraryRepository(
         val folder = File(context.filesDir, "pages/${System.currentTimeMillis()}")
         folder.mkdirs()
         val saved = mutableListOf<File>()
+        val failures = mutableListOf<String>()
         uris.forEachIndexed { index, uri ->
-            val ext = context.contentResolver.getType(uri)?.substringAfterLast('/') ?: "jpg"
-            val out = File(folder, "%04d.%s".format(index, if (ext == "jpeg") "jpg" else ext))
-            runCatching {
+            val mime = runCatching { context.contentResolver.getType(uri) }.getOrNull()
+            val ext = when {
+                mime == null -> "jpg"
+                mime.contains("png") -> "png"
+                mime.contains("webp") -> "webp"
+                mime.contains("gif") -> "gif"
+                mime.contains("heic") || mime.contains("heif") -> "heic"
+                else -> "jpg"
+            }
+            val out = File(folder, "%04d.%s".format(index, ext))
+            val copied = runCatching {
                 context.contentResolver.openInputStream(uri)?.use { input ->
                     FileOutputStream(out).use { output -> input.copyTo(output) }
-                }
-            }.onSuccess { if (out.exists() && out.length() > 0) saved += out }
+                } ?: throw IllegalStateException("the picker did not grant access to this file")
+                out.length()
+            }.getOrElse { error ->
+                failures += "page ${index + 1}: ${error.message ?: "unreadable"}"
+                0L
+            }
+            if (copied > 0) saved += out else out.delete()
+        }
+        // A share sheet can hand over a URI that dies the moment the sender goes away; the
+        // copy above is why a page keeps working after that, and why the message below is
+        // specific when it does not.
+        require(saved.isNotEmpty()) {
+            "No page could be copied: " + failures.take(2).joinToString("; ")
         }
         val bookId = dao.insert(
             BookEntity(
@@ -110,6 +145,10 @@ class LibraryRepository(
                 updatedAt = now,
             )
         )
+        if (failures.isNotEmpty()) {
+            lastImportWarning = "${failures.size} of ${uris.size} files could not be copied " +
+                "(${failures.first()})"
+        }
         dao.insertPages(saved.mapIndexed { index, file ->
             PageEntity(bookId = bookId, index = index, imageUri = "file://" + file.absolutePath)
         })
@@ -165,21 +204,34 @@ class LibraryRepository(
         val started = System.currentTimeMillis()
         dao.setStatus(page.id, PageEntity.Status.RUNNING)
         try {
-            val bitmap = PageImages.decode(context, page.imageUri, PageImages.OCR_TARGET_WIDTH)
-                ?: error("The page image could not be read")
-            val ocrResult = ocr.recognize(
-                bitmap,
+            // Ask the decoder why a page failed rather than turning every cause into one
+            // useless sentence: a missing file, a revoked share and a 12000 px strip that ran
+            // out of memory are different problems and get different text on the card.
+            val dims = PageImages.dimensions(context, page.imageUri)
+            val source = if (dims.first > 0 && dims.second > 0) {
+                app.mangascribe.ocr.ImageSource.FileSource(
+                    context, page.imageUri, dims.first, dims.second,
+                )
+            } else {
+                val bmp = PageImages.decodeOrThrow(context, page.imageUri, PageImages.OCR_TARGET_WIDTH)
+                app.mangascribe.ocr.ImageSource.BitmapSource(bmp)
+            }
+            val ocrResult = ocr.recognizeSource(
+                source,
                 languageCode = book.sourceLanguage,
                 options = OcrOptions(
                     stripFurigana = config.stripFurigana,
                     mergeBlocks = config.mergeBlocks,
                 ),
             )
+            // Sizes for the reader come from the page itself, not from whatever was decoded.
+            val pageWidth = if (dims.first > 0) dims.first else PageImages.READER_TARGET_WIDTH
+            val pageHeight = if (dims.second > 0) dims.second else (pageWidth * 1.4f).toInt()
             if (ocrResult.blocks.isEmpty()) {
                 dao.saveTranslation(
                     page.id, PageEntity.Status.DONE, "[]", "ocr-none",
                     "No text was found on this page", System.currentTimeMillis(),
-                    bitmap.width, bitmap.height,
+                    pageWidth, pageHeight,
                 )
                 return@withContext PageTranslation(page.id, emptyList(), "ocr-none", ocrResult.elapsedMs)
             }
@@ -202,8 +254,8 @@ class LibraryRepository(
                 Balloon.from(block, batch.lines.getOrElse(i) { block.text })
                     .copy(maskOriginal = config.maskOriginal)
             }
-            val w = bitmap.width
-            val h = bitmap.height
+            val w = pageWidth
+            val h = pageHeight
             dao.saveTranslation(
                 page.id,
                 PageEntity.Status.DONE,
@@ -214,7 +266,6 @@ class LibraryRepository(
                 w,
                 h,
             )
-            bitmap.recycle()
             PageTranslation(page.id, balloons, batch.engineId, System.currentTimeMillis() - started)
         } catch (t: Throwable) {
             dao.setStatus(page.id, PageEntity.Status.FAILED, t.message ?: t.javaClass.simpleName)

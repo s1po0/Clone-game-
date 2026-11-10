@@ -147,7 +147,11 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
                 val name = title ?: "Imported ${java.text.SimpleDateFormat("d MMM HH:mm", java.util.Locale.getDefault()).format(java.util.Date())}"
                 repository.importUris(name, uris, origin = "file")
             }.onSuccess {
-                _toast.value = Toast("Imported ${uris.size} page(s)")
+                val warning = repository.lastImportWarning
+                _toast.value = Toast(
+                    warning ?: "Imported ${uris.size} page(s)"
+                )
+                if (warning != null) repository.clearImportWarning()
             }.onFailure {
                 _toast.value = Toast(it.message ?: "Import failed")
             }
@@ -161,7 +165,9 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
             runCatching {
                 repository.importArchive(uri, displayName ?: "Comic")
             }.onSuccess {
-                _toast.value = Toast("Imported ${displayName ?: "comic"}")
+                val warning = repository.lastImportWarning
+                _toast.value = Toast(warning ?: "Imported ${displayName ?: "comic"}")
+                if (warning != null) repository.clearImportWarning()
             }.onFailure {
                 _toast.value = Toast(it.message ?: "That file could not be opened")
             }
