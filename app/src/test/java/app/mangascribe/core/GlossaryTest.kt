@@ -1,7 +1,11 @@
 package app.mangascribe.core
 
 import app.mangascribe.translate.Glossary
+import app.mangascribe.translate.TranslationBatch
+import app.mangascribe.translate.TranslationPipeline
+import app.mangascribe.translate.Translator
 import app.mangascribe.translate.overlay
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -82,11 +86,6 @@ class GlossaryTest {
         assertEquals(listOf("مەحاڵە..."), out)
     }
 }
-
-import app.mangascribe.translate.TranslationBatch
-import app.mangascribe.translate.TranslationPipeline
-import app.mangascribe.translate.Translator
-import kotlinx.coroutines.runBlocking
 
 /** A stand-in engine: records what it was asked and returns a marked string. */
 private class EchoEngine : Translator {
