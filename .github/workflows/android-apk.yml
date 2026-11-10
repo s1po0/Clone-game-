@@ -138,8 +138,9 @@ jobs:
           translations and saved keys — do not uninstall first, and do not install two different
           builds at once.
 
-          Check the signer before installing, if you want: `apksigner verify --print-certs` on
-          your copy, and compare the SHA-256 with the one printed in this run's log.
+          Which build is installed? Settings -> This build shows the build number; it must match
+          this release's number. Check the signer with apksigner verify --print-certs on your
+          copy and compare the SHA-256 with the one printed in this run's log.
 
           Install: download the .apk, tap it, allow installing from this source, install.
           Requires Android 8.0 (API 26) or newer.
