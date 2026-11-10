@@ -16,6 +16,7 @@ import app.mangascribe.translate.Glossary
 import app.mangascribe.translate.GoogleTranslateTranslator
 import app.mangascribe.translate.HostHealth
 import app.mangascribe.translate.KeylessTranslateTranslator
+import app.mangascribe.translate.LineTranslator
 import app.mangascribe.translate.overlay
 import app.mangascribe.translate.Http
 import app.mangascribe.translate.LibreTranslateTranslator
@@ -272,38 +273,8 @@ class LibraryRepository(
             }
             val target = overrideTarget ?: book.targetLanguage
             val texts = prepared.map { it.text.replace("\n", " ") }
-            val pipeline = TranslationPipeline(engines(config), config.engineId)
-            // Repeated bubbles ("What?!" twice on a page, the same system label on every page)
-            // cost one request, not three — the same dedupe Kurd-man's translate_many does.
-            val unique = texts.map { it.trim() }.distinct().filter { it.isNotEmpty() }
-            val uniqueBatch = if (unique.size == texts.size) {
-                pipeline.translate(texts, sourceLanguage, target, deadEngines.toList())
-            } else {
-                pipeline.translate(unique, sourceLanguage, target, deadEngines.toList())
-            }
-            val index = unique.withIndex().associate { (i, text) -> text to i }
-            val batch = if (unique.size == texts.size) {
-                uniqueBatch
-            } else {
-                uniqueBatch.copy(
-                    lines = texts.map { text ->
-                        uniqueBatch.lines.getOrNull(index[text.trim()] ?: -1) ?: text
-                    },
-                )
-            }
-            // The glossary wins over the engine on known lines: "What?!" and "Run!" then read
-            // the same on every page of a chapter instead of drifting per request. Borrowed
-            // from the Kurd-man pipeline, where it was the cheapest quality win of all.
-            deadEngines.addAll(batch.unreachable)
-            val lines = Glossary.builtIn(target).overlay(texts, batch.lines)
-            // Store the finished pairs so a retry, a second read or the next chapter is local.
-            runCatching {
-                warmCache(
-                    batch.engineId, sourceLanguage, target,
-                    texts.indices.associate { texts[it] to lines[it] }
-                        .filterValues { it.isNotBlank() },
-                )
-            }
+            val translated = translateLines(texts, sourceLanguage, target, config)
+            val lines = translated.lines
             val balloons = prepared.mapIndexed { i, block ->
                 Balloon.from(block, lines.getOrElse(i) { block.text })
                     .copy(maskOriginal = config.maskOriginal)
@@ -314,13 +285,13 @@ class LibraryRepository(
                 page.id,
                 PageEntity.Status.DONE,
                 BalloonCodec.encode(balloons),
-                batch.engineId,
+                translated.engineId,
                 null,
                 System.currentTimeMillis(),
                 w,
                 h,
             )
-            PageTranslation(page.id, balloons, batch.engineId, System.currentTimeMillis() - started)
+            PageTranslation(page.id, balloons, translated.engineId, System.currentTimeMillis() - started)
         } catch (t: Throwable) {
             // Say what happened and what to do about it. The raw engine error ("MyMemory
             // returned no text") is accurate and misleading: MyMemory is the fallback and has
@@ -339,6 +310,66 @@ class LibraryRepository(
         }
     }
 
+    /**
+     * One page's text, end to end: glossary first (free and exact), then the engines, then a
+     * second pass for any line that still has source-language words in it.
+     *
+     * The order matters. A glossary hit costs nothing and is stable for the chapter; a term found
+     * *inside* a line ("Aspect: Temple Slave") is substituted in place and the rest is still sent
+     * to an engine; whatever comes back is verified word by word. That verification is the part
+     * the screenshot proved necessary: an engine can translate half a line and return the other
+     * half untouched, and a half-English bubble is worse than no translation at all.
+     */
+    private suspend fun translateLines(
+        texts: List<String>,
+        sourceLanguage: String,
+        target: String,
+        config: AppSettings,
+    ): LineTranslator.Result {
+        val glossary = Glossary.builtIn(target)
+        // 1. Whole-line glossary (exact phrases, names, system labels).
+        val afterWhole = texts.map { glossary.translationFor(it) }
+        // 2. Terms inside longer lines: rewrite, then translate only what is left.
+        val preWritten = texts.indices.map { i ->
+            afterWhole[i] ?: glossary.rewriteTermsInside(texts[i]).text
+        }
+        val needEngine = texts.indices.filter { afterWhole[it] == null }
+
+        var engineId = config.engineId
+        var unfinished = emptyList<Int>()
+        val out = preWritten.toMutableList()
+        if (needEngine.isNotEmpty()) {
+            val translator = LineTranslator(engines(config), config.engineId) { diagnostic ->
+                android.util.Log.i("MangaScribe", diagnostic)
+            }
+            val result = translator.translate(
+                needEngine.map { preWritten[it] },
+                sourceLanguage,
+                target,
+                deadEngines.toList(),
+            )
+            engineId = result.engineId
+            needEngine.forEachIndexed { i, original ->
+                val value = result.lines.getOrNull(i)?.takeIf { it.isNotBlank() }
+                if (value != null) out[original] = value
+            }
+            // A line that never came back fully translated keeps its source text: the renderer
+            // then shows the original art instead of a half-English bubble.
+            unfinished = result.unfinished
+            // Every verified pair goes into the translation memory: a retry or the next chapter
+            // is then a local read, not a request.
+            runCatching {
+                warmCache(
+                    engineId, sourceLanguage, target,
+                    needEngine.mapIndexed { i, original -> texts[original] to out[original] }
+                        .toMap()
+                        .filterValues { it.isNotBlank() },
+                )
+            }
+        }
+        return LineTranslator.Result(out, engineId, unfinished)
+    }
+
     /** Retranslate a page from stored OCR text — no second OCR pass, so it is quick. */
     suspend fun pagesOf(bookId: Long): List<PageEntity> = withContext(Dispatchers.IO) { dao.pages(bookId) }
 
@@ -349,17 +380,10 @@ class LibraryRepository(
             val existing = BalloonCodec.decode(page.blocksJson)
             if (existing.isEmpty()) return@withContext emptyList()
             val config = settings.current()
-            val pipeline = TranslationPipeline(engines(config), config.engineId)
-            val batch = pipeline.translate(
-                existing.map { it.sourceText.replace("\n", " ") },
-                book.sourceLanguage,
-                targetLanguage,
-                deadEngines.toList(),
-            )
             val sources = existing.map { it.sourceText.replace("\n", " ") }
-            val lines = Glossary.builtIn(targetLanguage).overlay(sources, batch.lines)
+            val translated = translateLines(sources, book.sourceLanguage, targetLanguage, config)
             val updated = existing.mapIndexed { i, balloon ->
-                balloon.copy(translatedText = lines.getOrElse(i) { balloon.translatedText })
+                balloon.copy(translatedText = translated.lines.getOrElse(i) { balloon.translatedText })
             }
             dao.updateBlocks(pageId, BalloonCodec.encode(updated))
             updated

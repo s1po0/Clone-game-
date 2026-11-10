@@ -48,6 +48,7 @@ class Glossary private constructor(internal val phrases: Map<String, String>) {
         val key = normalise(text)
         if (key.isEmpty()) return null
         aliasIndex[key]?.let { return it }
+        rewriteWhole(key)?.let { return it }
         // Longest matching prefix: covers "Who are you?! Come out." and speech followed by SFX.
         var best: String? = null
         var bestLength = 0
@@ -61,7 +62,64 @@ class Glossary private constructor(internal val phrases: Map<String, String>) {
         return best
     }
 
+    /**
+     * Replace names *inside* a longer line, leaving the rest for the engine.
+     *
+     * A status box reads "Aspect: Temple Slave" / "Description: a slave is a useless wretch…" —
+     * a whole-line lookup can never match that, so the screenshot kept both labels in English.
+     * Here every glossary term is substituted where it stands (longest first, so "temple slave"
+     * wins over "slave"), and the line is marked so the caller knows it still needs translating.
+     * Only terms of two or more characters are rewritten: a one-letter entry would hit inside
+     * words.
+     */
+    fun rewriteTermsInside(text: String): TermRewrite {
+        if (phrases.isEmpty()) return TermRewrite(text, emptyList())
+        var working = text
+        val replaced = mutableListOf<String>()
+        for ((source, target) in aliasIndex) {
+            if (source.length < 2) continue
+            val pattern = Regex(
+                "(?<![\\p{L}\\p{N}])" + Regex.escape(source) + "(?![\\p{L}\\p{N}])",
+                RegexOption.IGNORE_CASE,
+            )
+            if (pattern.containsMatchIn(working)) {
+                working = pattern.replace(working) { target }
+                replaced += source
+            }
+        }
+        return TermRewrite(working, replaced)
+    }
+
+    /**
+     * The whole line, assembled from glossary pieces: a label followed by a colon, then a
+     * sentence. "aspect: temple slave" is two known terms and a colon, so it can be answered
+     * without asking anyone; so can "description: a slave is a useless wretch with no notable
+     * skills or abilities".
+     */
+    private fun rewriteWhole(key: String): String? {
+        if (aliasIndex[key] != null) return aliasIndex[key]
+        // Split on a colon: the common shape of a status window.
+        val parts = key.split(':', limit = 2)
+        if (parts.size == 2) {
+            val left = aliasIndex[parts[0].trim()]
+            val right = aliasIndex[parts[1].trim()]
+            if (left != null && right != null) return "$left: $right"
+        }
+        // Comma-separated lists of known terms ("a slave is far rarer, but just as worthless").
+        val chunks = key.split(',').map { it.trim() }
+        if (chunks.size > 1) {
+            val mapped = chunks.map { aliasIndex[it] }
+            if (mapped.none { it == null }) return mapped.joinToString("، ")
+        }
+        return null
+    }
+
     private fun Char.isBoundary(): Boolean = isWhitespace() || this in ".,!?؟!…\"'«»"
+
+    /** The line after in-place term replacement, plus which terms were found. */
+    data class TermRewrite(val text: String, val terms: List<String>) {
+        val changed: Boolean get() = terms.isNotEmpty()
+    }
 
     companion object {
         val EMPTY = Glossary(emptyMap())

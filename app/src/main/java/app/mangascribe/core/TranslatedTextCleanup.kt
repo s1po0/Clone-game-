@@ -43,6 +43,31 @@ object TranslatedTextCleanup {
     }
 
     /**
+     * Words that are still in the source language after translation.
+     *
+     * Stronger than [hasLatinResidue], which only looks at the *share* of Latin letters: a line of
+     * Kurdish with two English words in it passes that test ("ئەسپێکت: temple slave"). Here every
+     * word of three or more Latin letters is compared with the source: a word that appears in the
+     * source was simply not translated; a word that does not (a name the engine transliterated
+     * back, an acronym) is left alone.
+     */
+    fun hasLeftoverSource(translated: String, source: String, targetIsRtl: Boolean): Boolean {
+        if (!targetIsRtl) return false
+        if (translated.isBlank()) return true
+        val sourceWords = source.lowercase()
+            .split(Regex("[^\\p{L}\\p{N}]+"))
+            .filter { it.length >= 3 }
+            .toSet()
+        val words = translated.split(Regex("[^\\p{L}\\p{N}']+"))
+        for (word in words) {
+            if (word.length < 3) continue
+            if (!word.all { it in 'A'..'Z' || it in 'a'..'z' }) continue
+            if (word.lowercase() in sourceWords) return true
+        }
+        return false
+    }
+
+    /**
      * The text that should be drawn for one balloon. `null` means "nothing worth drawing":
      * the caller keeps the original art instead of putting a box over a face.
      */
@@ -50,9 +75,12 @@ object TranslatedTextCleanup {
         val target = Languages.of(targetLanguage)
         val clean = translated.trim()
         if (clean.isEmpty()) return null
-        if (target.rtl && hasLatinResidue(clean, targetIsRtl = true)) {
-            // The engine echoed the source. Do not paint English in a Kurdish bubble.
-            return source.trim().takeIf { it.isNotEmpty() }
+        if (target.rtl && (hasLatinResidue(clean, targetIsRtl = true) ||
+                hasLeftoverSource(clean, source, targetIsRtl = true))
+        ) {
+            // The engine echoed the source, or left words of it inside the line. Drawing that
+            // puts English in a Kurdish bubble; the original art underneath already says it.
+            return null
         }
         return if (target.rtl) forRtlTarget(clean) else clean
     }
