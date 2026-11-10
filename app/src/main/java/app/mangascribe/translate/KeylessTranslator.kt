@@ -2,9 +2,8 @@ package app.mangascribe.translate
 
 import app.mangascribe.core.EngineCodes
 import app.mangascribe.core.Language
+import app.mangascribe.core.Languages
 import app.mangascribe.core.TranslatedTextCleanup
-import app.mangascribe.core.Language
-import app.mangascribe.core.TranslatedTextCleanups
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
