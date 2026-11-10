@@ -264,7 +264,18 @@ class LibraryRepository(
                 return@withContext PageTranslation(page.id, emptyList(), "ocr-none", ocrResult.elapsedMs)
             }
             // Kurdish is repaired before translation: the Arabic model's ك/ي/ھ are not Kurdish.
-            val sourceLanguage = ocrResult.detectedLanguage ?: book.sourceLanguage
+            // A detected source that equals the target is a dead end, not a language: the
+            // engine is asked for ckb→ckb, Google returns the input untouched (HTTP 200, no
+            // error), the no-Latin rescue then transliterates an English line, and the reader
+            // gets Kurdish letters with no meaning — the screenshot that says "make it mean
+            // something". The book's own declaration is the honest answer; the engine is told
+            // `auto` and detects for itself.
+            val detected = ocrResult.detectedLanguage
+            val sourceLanguage = if (detected != null && detected == (overrideTarget ?: book.targetLanguage)) {
+                book.sourceLanguage.takeIf { it != (overrideTarget ?: book.targetLanguage) } ?: "auto"
+            } else {
+                detected ?: book.sourceLanguage
+            }
             val prepared = ocrResult.blocks.map { block ->
                 if (app.mangascribe.core.Languages.of(sourceLanguage).script ==
                     app.mangascribe.core.Script.KURDISH
@@ -364,7 +375,7 @@ class LibraryRepository(
             }
             val result = translator.translate(
                 needEngine.map { preWritten[it] },
-                sourceLanguage,
+                if (sourceLanguage == target) "auto" else sourceLanguage,
                 target,
                 deadEngines.toList(),
             )

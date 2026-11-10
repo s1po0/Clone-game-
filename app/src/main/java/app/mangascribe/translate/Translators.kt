@@ -457,8 +457,12 @@ class TranslationPipeline(
     ): TranslationBatch {
         val ordered = engines.sortedBy { if (it.id == preferred) 0 else 1 }
             .filterNot { it.id in without }
-        val capable = ordered.filter { it.supportsPair(sourceLanguage, targetLanguage) }
-        val skipped = ordered.filterNot { it.supportsPair(sourceLanguage, targetLanguage) }
+        // A pair with identical ends is not a translation request. Every caller means "detect
+        // it and give me the target", which is what `auto` is for; passing ckb→ckb to a free
+        // endpoint returns the input unchanged and looks like a failed page.
+        val source = if (sourceLanguage == targetLanguage) "auto" else sourceLanguage
+        val capable = ordered.filter { it.supportsPair(source, targetLanguage) }
+        val skipped = ordered.filterNot { it.supportsPair(source, targetLanguage) }
         if (capable.isEmpty()) {
             throw UnsupportedPairException(
                 sourceLanguage,
@@ -474,7 +478,7 @@ class TranslationPipeline(
         for (engine in capable) {
             tried += engine.displayName
             try {
-                val result = engine.translate(texts, sourceLanguage, targetLanguage)
+                val result = engine.translate(texts, source, targetLanguage)
                 // An engine that echoes the source ("Worthless." came back as "WORTHLESS.") has
                 // not translated: try the next engine before accepting it. The renderer also
                 // refuses to draw such a line, but a retry is where a real translation can

@@ -113,6 +113,23 @@ class KeylessTranslateTranslator(
                 attempt.text
             }
             val out = PackedLines.unpack(texts, packed, answers).toMutableList()
+
+            // A packed request whose answer did not split back into the same number of lines
+            // leaves those lines untouched. Leaving them is not good enough: the reader gets a
+            // transliteration instead of a translation. So every line that came back unchanged
+            // is asked again **on its own**, which is the shape the endpoint always answers.
+            val stillSource = texts.indices.filter { index ->
+                texts[index].isNotBlank() &&
+                    out[index] == texts[index] &&
+                    (tl == "ckb" || tl == "ku" || tl == "ku-Arab")
+            }
+            if (stillSource.isNotEmpty()) {
+                for (index in stillSource) {
+                    val alone = tryRotation(texts[index], sl, tl)
+                    if (!alone.text.isNullOrBlank()) out[index] = alone.text
+                    unreachable.addAll(alone.dead)
+                }
+            }
             if (out.indices.all { out[it] == texts[it] } && texts.any { it.isNotBlank() }) {
                 throw TranslationException(
                     "Every free endpoint failed (${failures.firstOrNull() ?: "no answer"}). " +
