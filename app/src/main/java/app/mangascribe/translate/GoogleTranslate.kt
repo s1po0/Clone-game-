@@ -58,19 +58,21 @@ class GoogleTranslateTranslator(
         val out = MutableList(texts.size) { texts[it] }
         val failures = mutableListOf<String>()
 
-        // Kotlin refuses a `return@launch` inside a `runCatching` lambda, so the suspended
-        // call is wrapped in a plain try/catch instead.
+        // One coroutine per line, capped by the semaphore inside requestWithRetry; a plain
+        // try/catch because Kotlin will not take a `return@launch` inside a runCatching
+        // lambda, and a failure must not cancel its siblings.
         kotlinx.coroutines.coroutineScope {
-            texts.forEachIndexed { index, raw ->
+            val jobs = texts.mapIndexed { index, raw ->
                 val line = raw.trim()
-                if (line.isEmpty()) return@forEachIndexed
-                kotlinx.coroutines.launch {
+                if (line.isEmpty()) return@mapIndexed null
+                launch {
                     val key = sl + "|" + tl + "|" + line
                     val cached = synchronized(cacheLock) { cache[key] }
                     if (cached != null) {
                         out[index] = cached
                         return@launch
                     }
+
                     try {
                         val translated = requestWithRetry(line, sl, tl)
                         if (translated.isNotBlank()) {
@@ -82,6 +84,7 @@ class GoogleTranslateTranslator(
                     }
                 }
             }
+            jobs.forEach { it?.join() }
         }
 
         // Nothing at all came back: say why, so the pipeline tries the next engine and the
