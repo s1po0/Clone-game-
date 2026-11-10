@@ -21,7 +21,11 @@ data class AppSettings(
     val engineId: String = app.mangascribe.core.EngineCodes.GOOGLE,
     val stripFurigana: Boolean = true,
     val mergeBlocks: Boolean = true,
-    val maskOriginal: Boolean = true,
+    // Off by default: a white rectangle over the original lettering looks like a translation
+    // overlay pasted on top of a page, which is exactly what the reference app avoids. The
+    // translation is drawn over the art and a tap reveals the original in that bubble; masking
+    // is there when a reader wants a clean page.
+    val maskOriginal: Boolean = false,
     val verticalTypesetting: Boolean = true,
     val outlineText: Boolean = false,
     val fontScale: Float = 1f,

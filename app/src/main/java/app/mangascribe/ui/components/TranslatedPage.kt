@@ -40,6 +40,7 @@ import app.mangascribe.core.PageFonts
 import app.mangascribe.core.RtlTypeset
 import app.mangascribe.core.Script
 import app.mangascribe.core.TextFitter
+import app.mangascribe.core.TranslatedTextCleanup
 import app.mangascribe.core.TypesetSeed
 import app.mangascribe.data.AppSettings
 import app.mangascribe.data.Balloon
@@ -257,7 +258,15 @@ private fun DrawScope.drawTranslatedBalloons(
     for (balloon in balloons) {
         if (balloon.hidden) continue
         val showSource = showOriginal || balloon.id in revealed
-        val text = if (showSource) balloon.sourceText else balloon.translatedText
+        val text = if (showSource) {
+            balloon.sourceText
+        } else {
+            // Never paint an untranslated English line into a Kurdish bubble, and never draw
+            // ALL-CAPS Latin with a Naskh face: the first reads as a bug, the second as a
+            // spelling mistake to anyone who reads the script.
+            TranslatedTextCleanup.drawable(balloon.translatedText, balloon.sourceText, settings.targetLanguage)
+                ?: continue
+        }
         if (text.isBlank()) continue
         val r = balloon.movedRect()
         val left = box.left + r.left * k
