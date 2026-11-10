@@ -26,6 +26,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -51,6 +52,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.mangascribe.core.ReadingLayout
+import app.mangascribe.core.ReadingMode
 import app.mangascribe.data.Balloon
 import app.mangascribe.data.PageEntity
 import app.mangascribe.ui.components.TranslatedPage
@@ -79,6 +82,10 @@ fun ReaderScreen(
     var showOriginal by remember { mutableStateOf(false) }
     var editingPage by remember { mutableStateOf<PageEntity?>(null) }
     var menu by remember { mutableStateOf(false) }
+    // "Fit width" is the default for a webtoon strip: the old fixed 420 dp row clipped most of
+    // a tall page, which is why lines were unreadable without pinching. The reader can switch
+    // to one-page or zoom from the menu and the choice is remembered for the session.
+    var mode by remember(bookId) { mutableStateOf(ReadingMode.FIT_WIDTH) }
 
     val listState = rememberLazyListState()
     LaunchedEffect(pages.size) {
@@ -97,6 +104,8 @@ fun ReaderScreen(
     }
 
     val currentPage = pages.getOrNull(listState.firstVisibleItemIndex)
+    val screenWidthDp = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp.toFloat()
+    val screenHeightDp = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp.toFloat()
 
     Scaffold(
         topBar = {
@@ -135,6 +144,23 @@ fun ReaderScreen(
                             text = { Text("Edit this page's text") },
                             onClick = { menu = false; editingPage = currentPage },
                         )
+                        HorizontalDivider()
+                        ReadingMode.entries.forEach { option ->
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        when (option) {
+                                            ReadingMode.FIT_WIDTH -> "Read: fit width (strips)"
+                                            ReadingMode.PAGE -> "Read: one page per screen"
+                                            ReadingMode.ZOOM -> "Read: zoomed, pan around"
+                                        },
+                                        fontWeight = if (option == mode) androidx.compose.ui.text.font.FontWeight.Bold else null,
+                                    )
+                                },
+                                onClick = { menu = false; mode = option },
+                            )
+                        }
+                        HorizontalDivider()
                         DropdownMenuItem(
                             text = { Text("Translate whole book") },
                             onClick = { menu = false; viewModel.translateWholeBook(bookId) },
@@ -207,7 +233,11 @@ fun ReaderScreen(
                 Box(
                     Modifier
                         .fillMaxWidth()
-                        .height(pageHeight(page))
+                        .height(
+                            ReadingLayout.scrollHeightDp(
+                                page.width, page.height, screenWidthDp, screenHeightDp - 96f, mode,
+                            ).dp
+                        )
                         .background(MaterialTheme.colorScheme.surfaceVariant),
                 ) {
                     TranslatedPage(
@@ -256,12 +286,6 @@ fun ReaderScreen(
             },
         )
     }
-}
-
-/** Webtoon strips read as long columns; a single panel reads at its own aspect ratio. */
-private fun pageHeight(page: PageEntity): androidx.compose.ui.unit.Dp {
-    val ratio = if (page.width > 0 && page.height > 0) page.height.toFloat() / page.width else 1.4f
-    return (420f * ratio.coerceIn(0.35f, 3.2f)).dp
 }
 
 @Composable

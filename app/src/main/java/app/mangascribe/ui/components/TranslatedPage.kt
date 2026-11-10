@@ -228,16 +228,28 @@ private fun DrawScope.drawTranslatedBalloons(
     if (box.width <= 1f || pageWidth <= 0) return
     val k = box.width / pageWidth
     val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+        // A real Arabic-script face, not the system sans. sans-serif-medium has Naskh-shaped
+        // fallbacks for most Kurdish letters but not all, which is how a page ends up with a
+        // stray empty box mid-sentence. Noto Naskh covers پ ژ گ چ ڤ ۆ ێ ڕ ڵ ە (checked), and
+        // is bundled in res/font so this does not depend on the phone's fallback chain.
+        typeface = PageFonts.forText(rightToLeft)
         textAlign = Paint.Align.CENTER
         color = android.graphics.Color.BLACK
+        // Karaoke/letter-spacing tricks are wrong for joined script; keep the shaper in charge.
+        isSubpixelText = true
     }
     val measurer: Measurer = object : Measurer {
         override fun width(text: String, sizePx: Float): Float {
             paint.textSize = sizePx
             return paint.measureText(text)
         }
-        override fun lineHeight(sizePx: Float): Float = sizePx * 1.16f
+        // Full ascent+descent, not a magic 1.16: Kurdish letters carry dots above and below, so
+        // an estimate that ignores the descender overlaps two lines of a three-line bubble.
+        override fun lineHeight(sizePx: Float): Float {
+            paint.textSize = sizePx
+            val fm = paint.fontMetrics
+            return (fm.descent - fm.ascent) + fm.leading
+        }
     }
 
     for (balloon in balloons) {
@@ -267,7 +279,7 @@ private fun DrawScope.drawTranslatedBalloons(
             val boxW = (right - left) - pad
             val boxH = (bottom - top) - pad
             if (boxW <= 4f || boxH <= 4f) return@rotate
-            val seed = max(8f, min(boxH, boxW * 1.1f) * 0.92f * settings.fontScale)
+            val seed = app.mangascribe.core.TypesetSeed.forBox(boxW, boxH, text) * settings.fontScale
             if (rightToLeft && !showSource) {
                 drawRtlBalloonText(paint, measurer, text, left, top, right, bottom, boxW, boxH, seed, settings)
                 return@rotate

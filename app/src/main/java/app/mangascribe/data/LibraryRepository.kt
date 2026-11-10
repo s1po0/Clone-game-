@@ -98,6 +98,19 @@ class LibraryRepository(
         bookId
     }
 
+    /**
+     * Best-effort display name for a content URI, used only for ordering pages. Never used as a
+     * key: two providers may return the same name for different files.
+     */
+    private fun Uri.sortName(): String = runCatching {
+        context.contentResolver.query(this, null, null, null, null)?.use { cursor ->
+            if (cursor.moveToFirst()) {
+                val idx = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                if (idx >= 0) cursor.getString(idx) ?: "" else ""
+            } else ""
+        }
+    }.getOrNull().orEmpty().ifBlank { lastPathSegment.orEmpty() }
+
     suspend fun importUris(
         title: String,
         uris: List<Uri>,
@@ -109,7 +122,12 @@ class LibraryRepository(
         folder.mkdirs()
         val saved = mutableListOf<File>()
         val failures = mutableListOf<String>()
-        uris.forEachIndexed { index, uri ->
+        // The picker returns documents in tap order, which is almost never reading order.
+        // Sort by the display name so `001.jpg, 002.jpg, 010.jpg` become pages 1,2,3 instead of
+        // whatever order the user happened to select them in — the difference between a chapter
+        // and a shuffled deck.
+        val ordered = uris.sortedWith(compareBy({ it.sortName() }, { it.toString() }))
+        ordered.forEachIndexed { index, uri ->
             val mime = runCatching { context.contentResolver.getType(uri) }.getOrNull()
             val ext = when {
                 mime == null -> "jpg"
