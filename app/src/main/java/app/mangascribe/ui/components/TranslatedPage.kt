@@ -36,9 +36,11 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import app.mangascribe.core.Languages
 import app.mangascribe.core.Measurer
+import app.mangascribe.core.PageFonts
 import app.mangascribe.core.RtlTypeset
 import app.mangascribe.core.Script
 import app.mangascribe.core.TextFitter
+import app.mangascribe.core.TypesetSeed
 import app.mangascribe.data.AppSettings
 import app.mangascribe.data.Balloon
 import coil.compose.AsyncImage
@@ -279,7 +281,7 @@ private fun DrawScope.drawTranslatedBalloons(
             val boxW = (right - left) - pad
             val boxH = (bottom - top) - pad
             if (boxW <= 4f || boxH <= 4f) return@rotate
-            val seed = app.mangascribe.core.TypesetSeed.forBox(boxW, boxH, text) * settings.fontScale
+            val seed = TypesetSeed.forBox(boxW, boxH, text) * settings.fontScale
             if (rightToLeft && !showSource) {
                 drawRtlBalloonText(paint, measurer, text, left, top, right, bottom, boxW, boxH, seed, settings)
                 return@rotate
