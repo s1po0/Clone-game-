@@ -1,14 +1,8 @@
 == exit summary ==
-e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/data/Secrets.kt:27:44 Expecting an expression
-e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/data/Secrets.kt:27:44 Expecting '->'
-e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/data/Secrets.kt:27:45 Expecting an expression
-e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/data/Secrets.kt:27:45 Expecting '->'
-e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/data/Secrets.kt:28:17 Expecting ')'
-e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/data/Secrets.kt:28:22 Expecting an expression, is-condition or in-condition
-e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/data/Secrets.kt:28:31 Expecting an expression
-e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/data/Secrets.kt:28:31 Expecting '->'
-e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/data/Secrets.kt:28:32 Expecting an expression
-e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/data/Secrets.kt:28:32 Expecting '->'
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/translate/GoogleTranslate.kt:64:36 Unresolved reference 'launch'.
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/translate/GoogleTranslate.kt:71:52 Suspension functions can only be called within coroutine body.
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/ScanScreen.kt:187:21 Unresolved reference 'TextButton'.
+e: file:///home/runner/work/Clone-game-/Clone-game-/app/src/main/java/app/mangascribe/ui/screens/ScanScreen.kt:189:26 @Composable invocations can only happen from the context of a @Composable function
 FAILURE: Build failed with an exception.
 * What went wrong:
 Caused by: org.gradle.workers.internal.DefaultWorkerExecutor$WorkExecutionException: A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction
@@ -93,5 +87,5 @@ Caused by: org.jetbrains.kotlin.gradle.tasks.CompilationErrorException: Compilat
 	... 2 more
 
 
-BUILD FAILED in 24s
-15 actionable tasks: 9 executed, 6 from cache
+BUILD FAILED in 22s
+16 actionable tasks: 10 executed, 6 from cache
