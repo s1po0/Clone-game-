@@ -4,6 +4,7 @@ import app.mangascribe.core.EngineCodes
 import app.mangascribe.core.Language
 import app.mangascribe.core.Languages
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 
