@@ -360,12 +360,13 @@ class KeylessTranslateTranslator(
          * Public Lingva instances (from the project's own `instances.json`). They come and go;
          * the list is a rotation, so one being down costs one skipped host, not a failed page.
          */
-        val LINGVA_INSTANCES: List<String> = listOf(
-            "https://lingva.ml",
-            "https://translate.plausibility.cloud",
-            "https://lingva.lunar.icu",
-            "https://translate.projectsegfau.lt",
-        )
+        /**
+         * **Empty on purpose.** Every public Lingva instance answers `/api/v1/en/ckb/...` with
+         * `{"error":"Invalid target language code"}` — measured on lingva.ml, and they all run
+         * the same code. Keeping them in the rotation cost four wasted requests per line and
+         * looked like a network fault. They stay out until an instance supports Sorani.
+         */
+        val LINGVA_INSTANCES: List<String> = emptyList()
 
         /** Hosts that failed at the transport level during this run. */
         private val deadHosts: MutableSet<String> = java.util.Collections.synchronizedSet(mutableSetOf())

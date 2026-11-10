@@ -19,7 +19,6 @@ import app.mangascribe.translate.GoogleTranslateTranslator
 import app.mangascribe.translate.HostHealth
 import app.mangascribe.translate.KeylessTranslateTranslator
 import app.mangascribe.translate.LineTranslator
-import app.mangascribe.translate.MicrosoftTranslateTranslator
 import app.mangascribe.translate.overlay
 import app.mangascribe.translate.Http
 import app.mangascribe.translate.LibreTranslateTranslator
@@ -673,16 +672,15 @@ class LibraryRepository(
     private val translationCache by lazy { TranslationCache(context) }
 
     private fun engines(config: AppSettings): List<Translator> = buildList {
-        // The keyless rotation first: several public endpoints, so a rate-limited one does not
-        // end the page. Google (single endpoint) stays as a separate, fast first choice when the
-        // user picked it explicitly.
-        // Microsoft first for Kurdish: it is the one engine with a dedicated Sorani model on a
-        // keyless endpoint, and it answers when Google echoes the line back. Then the keyless
-        // rotation (Google's free endpoints), then the single Google endpoint.
-        add(MicrosoftTranslateTranslator(http))
+        // **Google only.** Not for lack of trying: Microsoft's keyless endpoint answers `to=ckb`
+        // with HTTP 400, MyMemory has no Sorani at all, and every public Lingva mirror rejects
+        // `ckb`. Ten third-party routes were tested; the ones that answered did so by echoing the
+        // source, which is exactly the English-in-a-Kurdish-bubble bug this app spent a week on.
+        //
+        // One engine, one well-understood request, one honest failure message. Fewer moving parts
+        // means a failure is diagnosable instead of a mystery spread over four hosts.
         add(KeylessTranslateTranslator(http))
         add(GoogleTranslateTranslator(http))
-        add(MyMemoryTranslator(http))
         // LibreTranslate only when the user actually pointed it at a server. The public
         // argosopentech instance is dead (its hostname no longer resolves), so shipping it as a
         // default made every failing page end with "Unable to resolve host" — a DNS error for a
@@ -690,6 +688,10 @@ class LibraryRepository(
         val libre = config.libreEndpoint.trim()
         if (libre.isNotEmpty() && !libre.contains("argosopentech")) {
             add(LibreTranslateTranslator(http, libre, config.libreApiKey.takeIf { it.isNotBlank() }))
+        }
+        // MyMemory cannot do Sorani; only added when the reader asked for it by name.
+        if (config.engineId == app.mangascribe.core.EngineCodes.MYMEMORY) {
+            add(MyMemoryTranslator(http))
         }
         if (config.llmApiKey.isNotBlank()) {
             add(
