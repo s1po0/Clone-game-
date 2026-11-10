@@ -46,7 +46,12 @@ class MangaScribeApp : Application() {
     override fun onCreate() {
         super.onCreate()
         graph = AppGraph(this)
-        scope.launch { ensureDemoContent() }
+        scope.launch {
+            // Earlier builds stored the key as plain text in DataStore; move it into the
+            // Keystore-encrypted store before anything reads settings.
+            runCatching { graph.settings.migrateLegacyKeys() }
+            ensureDemoContent()
+        }
     }
 
     /**

@@ -65,6 +65,50 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { (getApplication() as MangaScribeApp).graph.settings.update(transform) }
     }
 
+    /** The store behind settings, for the credential editor's direct writes. */
+    private val settingsStore get() = (getApplication() as MangaScribeApp).graph.settings
+
+    /**
+     * Writes a credential and nothing else. Called on every keystroke from the settings
+     * screen: the SecretStore writes synchronously, so the value is durable as soon as it is
+     * typed, and the settings flow re-emits so the "Saved on this device" line is truthful.
+     */
+    fun setCredentials(
+        llmApiKey: String? = null,
+        libreApiKey: String? = null,
+        myMemoryEmail: String? = null,
+        llmBaseUrl: String? = null,
+        llmModel: String? = null,
+        libreEndpoint: String? = null,
+    ) {
+        viewModelScope.launch {
+            val current = settings.value
+            settingsStore.update {
+                current.copy(
+                    llmApiKey = llmApiKey ?: current.llmApiKey,
+                    libreApiKey = libreApiKey ?: current.libreApiKey,
+                    myMemoryEmail = myMemoryEmail ?: current.myMemoryEmail,
+                    llmBaseUrl = llmBaseUrl ?: current.llmBaseUrl,
+                    llmModel = llmModel ?: current.llmModel,
+                    libreEndpoint = libreEndpoint ?: current.libreEndpoint,
+                )
+            }
+        }
+    }
+
+    fun exportSecretBundle(): String? {
+        val bundle = settingsStore.exportSecrets()
+        if (bundle.isBlank()) {
+            showToast("No key saved yet")
+            return null
+        }
+        return bundle
+    }
+
+    fun importSecretBundle(bundle: String): Boolean = settingsStore.importSecrets(bundle)
+
+    fun secretsProblem(): String? = settingsStore.secretsProblem()
+
     fun swapLanguages() = updateSettings {
         it.copy(sourceLanguage = it.targetLanguage, targetLanguage = it.sourceLanguage)
     }

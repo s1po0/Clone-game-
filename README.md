@@ -26,7 +26,8 @@ written from scratch, and the recognition runs locally rather than on a server.
 | **Scan a screen** | Share sheet or screenshot import: any app, game or web page picture goes through the same pipeline. |
 | **Archives** | `.cbz` / `.zip` open directly. `.cbr` is detected and refused with an explanation instead of crashing. |
 | **Export** | Render the translated page to PNG and share it, or copy the text out. |
-| **Privacy** | Images never leave the phone. Only the recognised **text** goes to the translator you pick. Keys are excluded from cloud backups. |
+| **Privacy** | Images never leave the phone. Only the recognised **text** goes to the translator you pick. Keys are Keystore-encrypted and never backed up. |
+| **Keys that stay put** | A key typed once survives restarts, updates, reboots and Android killing the app. Encrypted with a device-bound Keystore key, written synchronously, and exportable to a new phone on purpose. |
 
 ## Kurdish (Sorani)
 
@@ -87,6 +88,29 @@ file manager if Android asks, then install. Android 8.0 (API 26) or newer.
 
 The build is debug-signed, not Play-Store-signed: fine for your own device and for testing,
 not for publishing. It calls MyMemory and any model endpoint you configure, so it needs internet.
+
+## Keys (tokens) — where they live and why they survive
+
+If you paste a model key into **Settings → Set up a model or your own server**, this is what
+happens to it:
+
+1. **Written immediately**, synchronously, on every change: paste, background the app, return,
+   and the value is still in the field and still on disk. No Save button to forget.
+2. **Encrypted at rest** with an AES-256-GCM key held by the Android Keystore (hardware-backed
+   on most phones). The file `secrets.bin` on its own is useless.
+3. **Out of cloud backups**, deliberately: the Keystore key is device-bound, so a restored copy
+   could not be decrypted anyway — the app says *"enter the key again"* instead of silently
+   pretending the key is there.
+4. **Not in the DataStore**: an earlier build kept the key in a plain preferences file; the app
+   migrates it into the encrypted store on first launch and deletes the plaintext copy.
+5. **Portable when you want it**: *Export keys* copies a bundle to the clipboard, *Import keys*
+   takes it on the new phone. (The bundle is base64, not encryption — move it through a channel
+   you trust, and clear the clipboard afterwards.)
+6. **Never logged**: diagnostics print `model=set(48 chars, …4f2a)`, never the key.
+
+Other apps cannot read the file (private storage), root-only tools on a rooted phone can — at
+that point no app-level protection helps, which is why the app also keeps the key's scope
+narrow: one endpoint, and nothing else.
 
 ## Build
 

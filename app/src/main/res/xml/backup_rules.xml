@@ -4,6 +4,9 @@
     <include domain="file" path="pages/" />
     <include domain="file" path="books/" />
     <include domain="sharedpref" path="." />
-    <!-- API keys live in DataStore: keep them out of cloud backups -->
-    <exclude domain="file" path="datastore/mangascribe_settings.preferences_pb" />
+    <!-- Credentials live in secrets.bin, encrypted with a Keystore key that cannot be backed
+         up: the file is excluded so a restore cannot leave a half-usable secret behind. -->
+    <exclude domain="file" path="secrets.bin" />
+    <exclude domain="file" path="secrets.bin.tmp" />
+    <exclude domain="file" path="datastore/" />
 </full-backup-content>

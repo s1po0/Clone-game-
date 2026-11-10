@@ -39,7 +39,16 @@ data class AppSettings(
     val target: app.mangascribe.core.Language get() = Languages.of(targetLanguage)
 }
 
-class SettingsStore(private val context: Context) {
+/**
+ * Settings, in two halves that fail differently.
+ *
+ * Ordinary preferences are in DataStore and are cheap to lose. **Credentials are not**: they
+ * go through [SecretStore] (Keystore-encrypted, written synchronously), and the settings flow
+ * is the merge of the two, so a key typed once is still there after a restart, an update or a
+ * low-memory kill. DataStore's old key fields are migrated across on first run and then
+ * deleted, because a plaintext key left behind in a preferences file defeats the point.
+ */
+class SettingsStore(private val context: Context, private val secrets: SecretStore = SecretStore(context)) {
 
     private object Keys {
         val source = stringPreferencesKey("source_language")
@@ -63,7 +72,16 @@ class SettingsStore(private val context: Context) {
         val migrations = intPreferencesKey("schema_version")
     }
 
-    val flow: Flow<AppSettings> = context.dataStore.data.map { p -> read(p) }
+    /** Preferences merged with the credentials on disk; one snapshot the UI can trust. */
+    val flow: Flow<AppSettings> = context.dataStore.data.map { p -> read(p).with(loadSecrets()) }
+
+    private fun loadSecrets(): Secrets = secrets.load()
+
+    private fun AppSettings.with(s: Secrets): AppSettings = copy(
+        llmApiKey = s.llmApiKey,
+        libreApiKey = s.libreApiKey,
+        myMemoryEmail = s.myMemoryEmail,
+    )
 
     private fun read(p: Preferences): AppSettings {
         val defaults = AppSettings()
@@ -79,19 +97,34 @@ class SettingsStore(private val context: Context) {
             fontScale = p[Keys.fontScale] ?: defaults.fontScale,
             autoTranslateOnOpen = p[Keys.autoTranslate] ?: defaults.autoTranslateOnOpen,
             readerDirection = p[Keys.direction] ?: defaults.readerDirection,
-            myMemoryEmail = p[Keys.myMemoryEmail] ?: defaults.myMemoryEmail,
+            // Credentials come from SecretStore, merged in by `flow` and `update`.
+            myMemoryEmail = defaults.myMemoryEmail,
             libreEndpoint = p[Keys.libreEndpoint] ?: defaults.libreEndpoint,
-            libreApiKey = p[Keys.libreKey] ?: defaults.libreApiKey,
+            libreApiKey = defaults.libreApiKey,
             llmBaseUrl = p[Keys.llmBase] ?: defaults.llmBaseUrl,
-            llmApiKey = p[Keys.llmKey] ?: defaults.llmApiKey,
+            llmApiKey = defaults.llmApiKey,
             llmModel = p[Keys.llmModel] ?: defaults.llmModel,
             scanOnLaunch = p[Keys.scanOnLaunch] ?: defaults.scanOnLaunch,
         )
     }
 
     suspend fun update(transform: (AppSettings) -> AppSettings) {
+        val currentSecrets = loadSecrets()
+        val before = read(currentPrefs()).with(currentSecrets)
+        val updated = transform(before)
+        val nextSecrets = Secrets(
+            llmApiKey = updated.llmApiKey.trim(),
+            libreApiKey = updated.libreApiKey.trim(),
+            myMemoryEmail = updated.myMemoryEmail.trim(),
+        )
+        // Keys are written first and synchronously: if the process dies right after this line
+        // the credential is on disk, and the preference write below is only cosmetics.
+        if (nextSecrets != currentSecrets) secrets.save(nextSecrets)
+
         context.dataStore.edit { prefs ->
-            val updated = transform(read(prefs))
+            prefs.remove(Keys.llmKey)
+            prefs.remove(Keys.libreKey)
+            prefs.remove(Keys.myMemoryEmail)
             prefs[Keys.source] = updated.sourceLanguage
             prefs[Keys.target] = updated.targetLanguage
             prefs[Keys.engine] = updated.engineId
@@ -103,11 +136,8 @@ class SettingsStore(private val context: Context) {
             prefs[Keys.fontScale] = updated.fontScale
             prefs[Keys.autoTranslate] = updated.autoTranslateOnOpen
             prefs[Keys.direction] = updated.readerDirection
-            prefs[Keys.myMemoryEmail] = updated.myMemoryEmail
             prefs[Keys.libreEndpoint] = updated.libreEndpoint
-            prefs[Keys.libreKey] = updated.libreApiKey
             prefs[Keys.llmBase] = updated.llmBaseUrl
-            prefs[Keys.llmKey] = updated.llmApiKey
             prefs[Keys.llmModel] = updated.llmModel
             prefs[Keys.scanOnLaunch] = updated.scanOnLaunch
             prefs[Keys.migrations] = 1
@@ -115,4 +145,50 @@ class SettingsStore(private val context: Context) {
     }
 
     suspend fun current(): AppSettings = flow.first()
+
+    /** The cached DataStore snapshot — `data` keeps the last read in memory, so this is not I/O. */
+    private fun currentPrefs(): Preferences =
+        runCatching { kotlinx.coroutines.runBlocking { context.dataStore.data.first() } }
+            .getOrDefault(androidx.datastore.preferences.core.emptyPreferences())
+
+    /** Why stored keys are missing, when they could not be decrypted on this device. */
+    fun secretsProblem(): String? = secrets.lastFailure
+
+    /**
+     * One-time migration: earlier builds kept the key in DataStore as plain text. Move it into
+     * the encrypted store and delete the plaintext copy.
+     */
+    suspend fun migrateLegacyKeys() {
+        val prefs = context.dataStore.data.first()
+        val legacy = Secrets(
+            llmApiKey = prefs[Keys.llmKey]?.trim().orEmpty(),
+            libreApiKey = prefs[Keys.libreKey]?.trim().orEmpty(),
+            myMemoryEmail = prefs[Keys.myMemoryEmail]?.trim().orEmpty(),
+        )
+        if (legacy == Secrets.EMPTY) return
+        val existing = loadSecrets()
+        val merged = Secrets(
+            llmApiKey = existing.llmApiKey.ifBlank { legacy.llmApiKey },
+            libreApiKey = existing.libreApiKey.ifBlank { legacy.libreApiKey },
+            myMemoryEmail = existing.myMemoryEmail.ifBlank { legacy.myMemoryEmail },
+        )
+        secrets.save(merged)
+        context.dataStore.edit { p ->
+            p.remove(Keys.llmKey)
+            p.remove(Keys.libreKey)
+            p.remove(Keys.myMemoryEmail)
+        }
+    }
+
+    /** Writes a full export/import bundle, so a phone swap does not re-enter anything. */
+    fun exportSecrets(): String = Secrets.encode(loadSecrets())
+
+    fun importSecrets(base64: String): Boolean = runCatching {
+        val imported = Secrets.decode(base64)
+        if (imported == Secrets.EMPTY) return false
+        secrets.save(imported)
+        true
+    }.getOrDefault(false)
+
+    fun clearSecrets() = secrets.clear()
 }

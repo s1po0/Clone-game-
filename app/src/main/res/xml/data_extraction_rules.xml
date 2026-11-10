@@ -4,7 +4,10 @@
         <include domain="database" path="." />
         <include domain="file" path="pages/" />
         <include domain="file" path="books/" />
-        <exclude domain="file" path="datastore/mangascribe_settings.preferences_pb" />
+        <!-- Credentials are Keystore-encrypted and device-bound; a backup copy is useless
+             anywhere else and is still a secret, so it never leaves the device. -->
+        <exclude domain="file" path="secrets.bin" />
+        <exclude domain="file" path="secrets.bin.tmp" />
     </cloud-backup>
     <device-transfer>
         <include domain="database" path="." />

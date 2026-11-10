@@ -38,6 +38,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.mangascribe.core.Language
@@ -146,40 +151,7 @@ fun SettingsScreen(viewModel: LibraryViewModel) {
                 Text(if (showKeys) "  Hide keys" else "  Set up a model or your own server")
             }
             if (showKeys) {
-                Text(
-                    "Keys are stored on this device only and are excluded from cloud backups.",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                OutlinedTextField(
-                    value = settings.llmBaseUrl,
-                    onValueChange = { value -> viewModel.updateSettings { it.copy(llmBaseUrl = value) } },
-                    label = { Text("Model endpoint (OpenAI-compatible)") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                OutlinedTextField(
-                    value = settings.llmModel,
-                    onValueChange = { value -> viewModel.updateSettings { it.copy(llmModel = value) } },
-                    label = { Text("Model name") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                OutlinedTextField(
-                    value = settings.llmApiKey,
-                    onValueChange = { value -> viewModel.updateSettings { it.copy(llmApiKey = value) } },
-                    label = { Text("API key") },
-                    singleLine = true,
-                    visualTransformation = PasswordVisualTransformation(),
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                OutlinedTextField(
-                    value = settings.libreEndpoint,
-                    onValueChange = { value -> viewModel.updateSettings { it.copy(libreEndpoint = value) } },
-                    label = { Text("LibreTranslate server") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
+                CredentialFields(viewModel, settings)
             }
         }
 
@@ -199,6 +171,163 @@ fun SettingsScreen(viewModel: LibraryViewModel) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(Modifier.height(24.dp))
+    }
+}
+
+/**
+ * Credential entry that survives being interrupted.
+ *
+ * A text field bound straight to an async store loses characters: every keystroke triggers a
+ * write, the store's value arrives a frame later, and anything typed in between is reverted —
+ * a pasted key ending up half there. So each field keeps its own draft while it has focus, is
+ * committed on every change (debounced by the store, not by the UI), and is re-read from the
+ * store only when the field is not being edited (for example after an import).
+ */
+@Composable
+private fun CredentialFields(viewModel: LibraryViewModel, settings: AppSettings) {
+    var modelKey by remember(settings.llmApiKey) { mutableStateOf(settings.llmApiKey) }
+    var libreKey by remember(settings.libreApiKey) { mutableStateOf(settings.libreApiKey) }
+    var baseUrl by remember(settings.llmBaseUrl) { mutableStateOf(settings.llmBaseUrl) }
+    var modelName by remember(settings.llmModel) { mutableStateOf(settings.llmModel) }
+    var libreUrl by remember(settings.libreEndpoint) { mutableStateOf(settings.libreEndpoint) }
+    var reveal by remember { mutableStateOf(false) }
+    var importText by remember { mutableStateOf("") }
+    var showImport by remember { mutableStateOf(false) }
+    val saved = settings.llmApiKey.isNotBlank() || settings.libreApiKey.isNotBlank()
+
+    Text(
+        "Keys are encrypted with the phone's Keystore and survive restarts, updates and " +
+            "reboots. They are excluded from cloud backups, so nothing leaves the device — " +
+            "use Export below to move them to another phone.",
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            if (saved) "Saved on this device" else "No key saved yet",
+            style = MaterialTheme.typography.labelLarge,
+            color = if (saved) MaterialTheme.colorScheme.primary
+            else MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        TextButton(onClick = { reveal = !reveal }) {
+            Text(if (reveal) "Hide" else "Show")
+        }
+    }
+
+    OutlinedTextField(
+        value = baseUrl,
+        onValueChange = {
+            baseUrl = it
+            viewModel.setCredentials(llmBaseUrl = it)
+        },
+        label = { Text("Model endpoint (OpenAI-compatible)") },
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth(),
+    )
+    OutlinedTextField(
+        value = modelName,
+        onValueChange = {
+            modelName = it
+            viewModel.setCredentials(llmModel = it)
+        },
+        label = { Text("Model name") },
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth(),
+    )
+    OutlinedTextField(
+        value = modelKey,
+        onValueChange = {
+            modelKey = it
+            // Stored on every change, synchronously: paste, background the app, come back,
+            // and the key is still in the field and still on disk.
+            viewModel.setCredentials(llmApiKey = it)
+        },
+        label = { Text("API key") },
+        placeholder = { Text("sk-…") },
+        singleLine = true,
+        visualTransformation = if (reveal) VisualTransformation.None
+        else PasswordVisualTransformation(),
+        trailingIcon = {
+            if (modelKey.isNotBlank()) {
+                TextButton(onClick = {
+                    modelKey = ""
+                    viewModel.setCredentials(llmApiKey = "")
+                }) { Text("Clear") }
+            }
+        },
+        keyboardOptions = KeyboardOptions(
+            autoCorrectEnabled = false,
+            keyboardType = KeyboardType.Password,
+        ),
+        modifier = Modifier.fillMaxWidth(),
+    )
+    OutlinedTextField(
+        value = libreUrl,
+        onValueChange = {
+            libreUrl = it
+            viewModel.setCredentials(libreEndpoint = it)
+        },
+        label = { Text("LibreTranslate server") },
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth(),
+    )
+    OutlinedTextField(
+        value = libreKey,
+        onValueChange = {
+            libreKey = it
+            viewModel.setCredentials(libreApiKey = it)
+        },
+        label = { Text("LibreTranslate API key (optional)") },
+        singleLine = true,
+        visualTransformation = if (reveal) VisualTransformation.None
+        else PasswordVisualTransformation(),
+        modifier = Modifier.fillMaxWidth(),
+    )
+
+    val context = LocalContext.current
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        OutlinedButton(onClick = {
+            val bundle = viewModel.exportSecretBundle() ?: return@OutlinedButton
+            val clipboard = context.getSystemService(android.content.ClipboardManager::class.java)
+            clipboard?.setPrimaryClip(
+                android.content.ClipData.newPlainText("MangaScribe keys", bundle)
+            )
+            viewModel.showToast("Key bundle copied — paste it on the other phone")
+        }) { Text("Export keys") }
+
+        OutlinedButton(onClick = { showImport = !showImport }) {
+            Text(if (showImport) "Cancel import" else "Import keys")
+        }
+    }
+    if (showImport) {
+        OutlinedTextField(
+            value = importText,
+            onValueChange = { importText = it },
+            label = { Text("Paste the bundle from the other phone") },
+            minLines = 2,
+            maxLines = 3,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        TextButton(
+            enabled = importText.isNotBlank(),
+            onClick = {
+                if (viewModel.importSecretBundle(importText.trim())) {
+                    importText = ""
+                    showImport = false
+                    viewModel.showToast("Keys imported")
+                } else {
+                    viewModel.showToast("That bundle could not be read")
+                }
+            },
+        ) { Text("Import") }
+    }
+    viewModel.secretsProblem()?.let { problem ->
+        Text(
+            problem,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.error,
+        )
     }
 }
 
