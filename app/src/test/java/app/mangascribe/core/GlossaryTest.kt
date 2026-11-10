@@ -128,6 +128,40 @@ class GlossaryPipelineTest {
     }
 }
 
+class OcrJunkTest {
+
+    @Test
+    fun `lettering read off the artwork is dropped`() {
+        // "PY", "SFX", "GRR" — sound effects and logos, not dialogue. Kurd-man's pipeline
+        // refused to typeset exactly this class of fragment onto a character's face.
+        listOf("PY", "SFX", "GRR", "HMPH", "ZZZZ").forEach {
+            assertTrue("'$it' should be junk", OcrCleanup.isJunk(it))
+        }
+    }
+
+    @Test
+    fun `real short dialogue survives`() {
+        listOf("No!", "OK", "OMG", "AHH", "HMM", "Why?", "?!", "Run!").forEach {
+            assertFalse("'$it' must not be dropped", OcrCleanup.isJunk(it))
+        }
+    }
+
+    @Test
+    fun `kurdish short words are never treated as artwork`() {
+        listOf("نا", "بەڵێ", "چی؟", "ڕابە").forEach {
+            assertFalse("'$it' must not be dropped", OcrCleanup.isJunk(it))
+        }
+    }
+
+    @Test
+    fun `japanese and long latin lines are untouched`() {
+        assertFalse(OcrCleanup.isJunk("待って！"))
+        assertFalse(OcrCleanup.isJunk("The bridge is out."))
+        assertTrue(OcrCleanup.isJunk("  "))
+        assertTrue(OcrCleanup.isJunk("12"))
+    }
+}
+
 class OcrRepairTest {
 
     @Test

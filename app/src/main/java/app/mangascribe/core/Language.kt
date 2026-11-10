@@ -262,7 +262,28 @@ object OcrCleanup {
         if (t.isEmpty()) return true
         if (t.length <= 3 && t.all { it.isDigit() }) return true
         val meaningful = t.count { it.isLetterOrDigit() && !it.isWhitespace() }
-        return meaningful == 0
+        if (meaningful == 0) return true
+        return looksLikeArtworkLettering(t)
+    }
+
+    /**
+     * Short, vowel-less Latin caps as OCR reads them off sound effects and logos: "PY",
+     * "SFX", "GRR", "HMPH". These are drawn *inside the art*, so translating them and
+     * typesetting the result puts a Kurdish word over a character's face.
+     *
+     * The rule is deliberately narrow, because it runs on every block without knowing whether
+     * the block came from a speech bubble: Latin only (Kurdish words are two or three letters
+     * often enough), two to five letters, and no vowel at all in the whole string. "OK",
+     * "OMG", "AHH", "HMM" all survive, which is what a real page needs.
+     */
+    private fun looksLikeArtworkLettering(text: String): Boolean {
+        val letters = text.filter { it.isLetter() }
+        if (letters.length !in 2..5) return false
+        if (!letters.all { it in 'A'..'Z' || it in 'a'..'z' }) return false
+        if (text.any { it.isDigit() }) return false
+        // A word of one repeated letter is a texture pattern, not dialogue.
+        if (letters.lowercase().toSet().size == 1) return true
+        return letters.none { it.lowercaseChar() in "aeiouy" }
     }
 
     // ---- Kurdish (Sorani) -----------------------------------------------------------------
