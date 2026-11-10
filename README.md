@@ -59,13 +59,22 @@ LibreTranslate both handle it well) and read from there.
 
 ## Engines
 
-Three translation back-ends, picked in Settings, with automatic fallback:
+Four translation back-ends, picked in Settings, with automatic fallback in that order:
 
-1. **MyMemory** — free, no account, rate-limited. The default so a fresh install works.
-2. **LibreTranslate** — point it at the public instance or your own server; bulk, two-way, free.
-3. **OpenAI-compatible model** — OpenAI, Groq, OpenRouter, or a local llama.cpp server. The
-   prompt returns one numbered line per balloon and the parser **refuses** a reply whose line
-   count does not match, so a dropped line can never shift every bubble on the page by one.
+1. **Google Translate** — **the default.** Free, no account, every language the app offers and
+   the only free engine with Kurdish Sorani. It calls the public `translate_a/single` endpoint
+   Google's own page uses, one line per request, at most four at a time, with a 429/5xx retry and
+   an in-memory cache so re-reading a page costs nothing. Only the recognised **text** is sent.
+2. **MyMemory** — free, no key, weaker quality; kept as a fallback for when Google refuses.
+3. **LibreTranslate** — point it at the public instance or your own server; bulk, two-way, free.
+4. **OpenAI-compatible model** — OpenAI, Groq, OpenRouter, or a local llama.cpp server. Best for
+   tone, names and jokes in long dialogue. The prompt returns one numbered line per balloon and
+   the parser **refuses** a reply whose line count does not match, so a dropped line can never
+   shift every bubble on the page by one.
+
+If the first engine fails, the next one that supports the language pair is tried, and the page
+says which engine produced its text. A failed page keeps its original art and can be retried on
+its own.
 
 Recognition is always ML Kit on-device (Japanese, Chinese, Korean, Devanagari and Latin models,
 run together when a page mixes scripts).
