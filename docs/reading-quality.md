@@ -48,6 +48,15 @@ letters, no vowel at all) so `OK`, `OMG`, `AHH` and every Kurdish word survive.
 `What?!` → `چی؟!`, `Run!` → `ڕابە!` and 32 more, applied as an overlay on the engine's output.
 Stable per chapter, zero requests. (`app/src/main/java/app/mangascribe/translate/Glossary.kt`.)
 
+## Round two (apk-37) — from the second screenshot
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| Page could not be **scrolled** at all | the page's drag handler consumed every touch and then discarded the pan because `scale` was 1 — the reader got no scroll | pan is only installed when zoomed (`panEnabled = scale > 1.02f`) |
+| `WORTHLESS.` in a Kurdish bubble | the engine echoed the source and the pipeline accepted it | `TranslationPipeline` treats Latin residue as an engine failure and tries the next engine; the renderer refuses to paint what is left |
+| Names spelled differently on every page (`شادو سلاڤە` / `شادۆ سلایڤ`) | every request transliterates freely | a **name table** in the glossary (`Shadow Slave`, `Aspect`, `Temple Slave`, `rank`, `dungeon`…), in English **and** in Japanese/Korean, so the Kurdish spelling is stable |
+| Flat, dictionary-ish Kurdish from the model | the prompt only asked for numbering | `ChatPrompt.STYLE`: whole-line translation, no English left, consistent names, labels stay labels, register matches the scene |
+
 ## Still open
 
 - **Vertical Japanese text**: detected and drawn top-to-bottom, but a rotated bubble on a
