@@ -71,6 +71,29 @@ Tests: `OcrJunkTest`.
 | Pillow `raqm` / `arabic_reshaper` shaping | Android's `Paint` + HarfBuzz does this natively, and MangaScribe's `RtlTypeset` already handles joining-safe wrapping and kashida. |
 | Python pipeline as a subprocess | No Python runtime on the device; the logic was ported, not embedded. |
 
+### 4. The persistent cache and the in-page dedupe — `data/TranslationCache.kt`, `translate/CachedTranslator.kt`
+
+Kurd-man's `TranslationCache` (SQLite, keyed by provider+pair+text, with a hit counter) plus
+`translate_many`'s dedupe of repeated bubbles. This was the missing answer to a real failure:
+`MyMemory returned no text`, because Google had rate-limited the page and every retry asked the
+same servers again.
+
+MangaScribe now:
+
+- keeps every finished line in `translations-cache.db`, keyed by **engine + pair + text**, so
+  switching engines does not return the previous engine's answer;
+- trims by least-recently-used at 60 000 rows;
+- sends a page's distinct lines only, mapping results back to balloon order;
+- lets a re-read, a retry, or the next chapter work **with no network at all** for anything seen;
+- shows the count in **Settings → Translation memory**, with a Clear button.
+
+### 5. "Name what failed, then say what to do"
+
+Kurd-man ends with `هەموو وەرگێڕەکان شکستیان هێنا — {err}`. MangaScribe's version of that idea
+is `translate/EngineFailures.kt`: a reader-facing paragraph naming the engines tried and pointing
+at the one action that helps (for Kurdish: Google Translate, or a model key). The raw MyMemory
+message was accurate and misleading — MyMemory is the fallback and has no Kurdish at all.
+
 ## What is still worth stealing later
 
 - **A user-editable glossary** in Settings (JSON import/export), so names and catchphrases can be
