@@ -1,6 +1,9 @@
 package app.mangascribe.translate
 
 import app.mangascribe.core.EngineCodes
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
+import kotlinx.coroutines.delay
 import app.mangascribe.core.Language
 import app.mangascribe.core.Languages
 
@@ -29,7 +32,7 @@ class MicrosoftTranslateTranslator(
     override val displayName = "Microsoft Translator"
     override val requiresNetwork = true
 
-    private val gate = kotlinx.coroutines.sync.Semaphore(maxConcurrent)
+    private val gate = Semaphore(maxConcurrent)
 
     /** The JWT and when it stops being usable. A token lasts ~10 minutes; renew at 8. */
     @Volatile private var token: String? = null
@@ -65,7 +68,7 @@ class MicrosoftTranslateTranslator(
             if (line.isEmpty()) return@forEachIndexed
             val result = runCatching {
                 gate.withPermit {
-                    kotlinx.coroutines.delay(PLEASANT_DELAY_MS)
+                    delay(PLEASANT_DELAY_MS)
                     requestLine(line, sl, tl)
                 }
             }
