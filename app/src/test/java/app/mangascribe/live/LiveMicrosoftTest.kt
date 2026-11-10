@@ -9,7 +9,13 @@ import org.junit.Assume.assumeTrue
 import org.junit.Test
 
 /**
- * Microsoft, keyless, into Sorani. The parser is tested offline; the endpoint is probed live.
+ * Microsoft, keyless, into Sorani.
+ *
+ * The endpoint moved in August 2026: `edge.microsoft.com/translate/auth` now 404s, and the
+ * two-step JWT flow with it. Edge's own web translator uses
+ * `POST edge.microsoft.com/translate/translatetext?from=&to=&isEnterpriseClient=false` with a
+ * **plain array of strings** — one translation per input, no token at all. That is what this
+ * class calls; the old shape (`[{"Text":"..."}]`) is rejected with 400.
  */
 class LiveMicrosoftTest {
 
@@ -19,6 +25,10 @@ class LiveMicrosoftTest {
     fun `the reply shape is parsed`() {
         val json = """[{"translations":[{"text":"لایەن: کۆیلەی پەرستگا","to":"ckb"}]}]"""
         assertEquals("لایەن: کۆیلەی پەرستگا", MicrosoftResponseParser.parse(json))
+        assertEquals(
+            "ڕاکردن!",
+            MicrosoftResponseParser.parse("""[{"translations":[{"text":"ڕاکردن!","to":"ckb"}]}]"""),
+        )
     }
 
     @Test
@@ -35,8 +45,7 @@ class LiveMicrosoftTest {
         val result = runCatching { runBlocking { engine.translate(page, "en", "ckb") } }
         println("LIVE microsoft: ${result.getOrNull()?.lines ?: result.exceptionOrNull()?.message}")
         if (result.isSuccess) {
-            val lines = result.getOrThrow().lines
-            assertEquals(2, lines.size)
+            assertEquals(2, result.getOrThrow().lines.size)
         }
     }
 }
