@@ -78,6 +78,31 @@ jobs:
           MANGASCRIBE_UPLOAD_KEY_PASSWORD: ${{ secrets.MANGASCRIBE_UPLOAD_KEY_PASSWORD }}
         run: ./gradlew :app:testDebugUnitTest --no-daemon --stacktrace 2>&1 | tee build-test.log
 
+      # The translation path against the real endpoints, from the real translator code.
+      #
+      # This is the test that was missing. Until now the app's network code was only ever run in a
+      # sandbox with no outbound network, so a wrong URL parameter, a refused language code or an
+      # echoed line could only be discovered by installing an APK and reading a screenshot — a
+      # round trip that took a dozen attempts. Now every push asks Google the same question the
+      # phone asks, and the answer is in the build log.
+      #
+      # It is allowed to fail without failing the build: a rate-limited runner must not block a
+      # release, but the log says exactly what happened.
+      - name: Live translation test (real endpoints)
+        continue-on-error: true
+        env:
+          MANGASCRIBE_LIVE: "1"
+        run: |
+          {
+            echo "== live endpoint test =="
+            ./gradlew :app:testDebugUnitTest --tests 'app.mangascribe.live.*' \
+              --no-daemon --info 2>&1 | grep -E "LIVE |OK: |FAIL: |EN \||KU \||tests? completed|BUILD" | head -60
+          } | tee live-report.txt || true
+          echo "### Live translation" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          head -40 live-report.txt >> "$GITHUB_STEP_SUMMARY" 2>/dev/null || true
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
       # Signed with the upload key when its secrets exist, so these APKs are the app's permanent
       # identity: every later build — including the one from Play — updates them in place.
       - name: Assemble APK
@@ -152,6 +177,21 @@ jobs:
 
       # No log access from every environment, but the repository is readable from all of
       # them: a failed build commits what the compiler said to ci-diagnostics.txt.
+      # The live report is committed whether the build passed or failed: it is the only place the
+      # agent can read what the real endpoints said, from an environment that has a network.
+      - name: Publish live report to the branch
+        if: always()
+        continue-on-error: true
+        run: |
+          test -f live-report.txt || exit 0
+          git config user.name "mangascribe-ci"
+          git config user.email "ci@users.noreply.github.com"
+          cp live-report.txt ci-live-report.txt
+          git add ci-live-report.txt
+          if git diff --cached --quiet; then echo "no change"; exit 0; fi
+          git commit -m "ci: live translation report [skip ci]"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+
       - name: Publish diagnostics to the branch
         if: failure()
         continue-on-error: true

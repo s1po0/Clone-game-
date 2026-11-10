@@ -314,6 +314,25 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** Results of "Test translation" in Settings, newest first. */
+    val selfTest = androidx.compose.runtime.mutableStateOf<List<app.mangascribe.translate.SelfTest.Step>>(emptyList())
+    val selfTestRunning = androidx.compose.runtime.mutableStateOf(false)
+
+    /**
+     * Ask the phone's own network the four questions that decide whether translation can work at
+     * all, and show the answers on screen. This exists because every diagnosis so far was a
+     * guess made from a screenshot.
+     */
+    fun runSelfTest(targetLanguage: String) {
+        if (selfTestRunning.value) return
+        selfTestRunning.value = true
+        viewModelScope.launch {
+            val http = app.mangascribe.translate.OkHttpHttp()
+            selfTest.value = app.mangascribe.translate.SelfTest.run(http, targetLanguage)
+            selfTestRunning.value = false
+        }
+    }
+
     fun saveBalloons(pageId: Long, balloons: List<Balloon>) {
         viewModelScope.launch { repository.saveBalloons(pageId, balloons) }
     }
