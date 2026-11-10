@@ -176,6 +176,15 @@ Other apps cannot read the file (private storage), root-only tools on a rooted p
 that point no app-level protection helps, which is why the app also keeps the key's scope
 narrow: one endpoint, and nothing else.
 
+## Coming from Kurd-man
+
+This app and [`s1po0/Kurd-man`](https://github.com/s1po0/Kurd-man) solve different problems — a
+Python pipeline plus Telegram bot versus a phone app — but they hit the same Kurdish walls. Three
+of Kurd-man's answers were better and now live here: a **glossary** that overrides any engine for
+known lines, a repair for OCR returning **presentation forms / private-use glyphs**, and a filter
+for **sound-effect lettering** read off the artwork. Exactly what was taken, what was left, and
+why: **[docs/from-kurd-man.md](docs/from-kurd-man.md)**.
+
 ## Build
 
 Requirements: JDK 17, Android SDK 35, and a device or emulator on API 26+ — or open the folder
