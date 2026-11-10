@@ -70,6 +70,8 @@ fun TranslatedPage(
     var revealed by remember(imagePath) { mutableStateOf<Set<Int>>(emptySet()) }
     var scale by remember(imagePath) { mutableStateOf(1f) }
     var offset by remember(imagePath) { mutableStateOf(Offset.Zero) }
+    // Only a zoomed page may consume drags; at 1x the reader must be able to scroll the strip.
+    val panEnabled = scale > 1.02f
 
     LaunchedEffect(imagePath) {
         pageSize = withContext(Dispatchers.IO) {
@@ -108,7 +110,12 @@ fun TranslatedPage(
                         }
                     }
                 }
-                .pointerInput(Unit) {
+                // Pan only exists when the page is actually zoomed in. The old handler consumed
+                // every drag unconditionally, which is why a strip could not be scrolled in the
+                // reader: the page ate the vertical gesture and then threw the pan away because
+                // scale was 1. `panEnabled` is read here, so at 1x the parent list scrolls.
+                .pointerInput(panEnabled) {
+                    if (!panEnabled) return@pointerInput
                     detectTransformGestures { _, pan, zoom, _ ->
                         scale = (scale * zoom).coerceIn(1f, 6f)
                         offset = if (scale <= 1.02f) Offset.Zero else offset + pan

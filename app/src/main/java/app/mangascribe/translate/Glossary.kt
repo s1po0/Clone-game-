@@ -22,20 +22,36 @@ import org.json.JSONObject
  * order for each line: whole line, then the longest prefix that matches (so `Who are you?!`
  * still wins inside `Who are you?! Come out.`).
  */
-class Glossary private constructor(private val phrases: Map<String, String>) {
+class Glossary private constructor(internal val phrases: Map<String, String>) {
 
     val size: Int get() = phrases.size
     val isEmpty: Boolean get() = phrases.isEmpty()
+
+    /**
+     * A second lookup table: the source language's own word for a term → the Kurdish
+     * transliteration. English-keyed entries cannot match a Japanese or Korean raw, so the
+     * names are also listed in the languages this app actually gets asked to read.
+     */
+    private val aliasIndex: Map<String, String> by lazy {
+        buildMap {
+            putAll(phrases)
+            for ((alias, target) in ALIASES) put(alias, target)
+        }.let { map ->
+            // Longest first, so "shadow slave" wins over "slave" in a prefix match.
+            map.entries.sortedByDescending { it.key.length }
+                .associate { it.key to it.value }
+        }
+    }
 
     fun translationFor(text: String): String? {
         if (phrases.isEmpty()) return null
         val key = normalise(text)
         if (key.isEmpty()) return null
-        phrases[key]?.let { return it }
+        aliasIndex[key]?.let { return it }
         // Longest matching prefix: covers "Who are you?! Come out." and speech followed by SFX.
         var best: String? = null
         var bestLength = 0
-        for ((source, target) in phrases) {
+        for ((source, target) in aliasIndex) {
             if (source.length <= bestLength || source.length >= key.length) continue
             if (key.startsWith(source) && key[source.length].isBoundary()) {
                 best = target + key.substring(source.length).trimEnd()
@@ -71,10 +87,61 @@ class Glossary private constructor(private val phrases: Map<String, String>) {
         fun builtIn(targetLanguage: String): Glossary {
             val code = Languages.of(targetLanguage).code
             return when (code) {
-                "ckb", "ku" -> KURDISH
+                "ckb", "ku" -> merged
                 else -> EMPTY
             }
         }
+
+        /**
+         * The same handful of names in the source languages, so a Japanese or Korean raw still
+         * produces the Kurdish spelling the reader knows instead of a fresh transliteration.
+         */
+        private val ALIASES: Map<String, String> = mapOf(
+            "影の奴隷" to "شادۆ سلەیڤ",
+            "アスペクト" to "ئەسپێکت",
+            "神殿の奴隷" to "کۆیلەی پەرستگا",
+            "그림자 노예" to "شادۆ سلەیڤ",
+            "속성" to "ئەسپێکت",
+            "신전의 노예" to "کۆیلەی پەرستگا",
+            "shadow slave" to "شادۆ سلەیڤ",
+            "aspect: temple slave" to "ئەسپێکت: کۆیلەی پەرستگا",
+        )
+
+        /** Sentences and names together: a name is often a whole balloon ("ASPECT: TEMPLE SLAVE"). */
+        private val merged: Glossary = Glossary(KURDISH.phrases + NAMES.phrases)
+
+        /**
+         * Names and terms a translator mangles and a reader notices immediately.
+         *
+         * Every engine transliterates character names differently on every request — "Shadow
+         * Slave" comes back as "شادۆ سلایڤ" on one page and "شادو سلاڤە" on the next, and a
+         * title like "Aspect: Temple Slave" becomes a sentence instead of a system label. These
+         * are *transliterations*, deliberately not translations: the reader is meant to
+         * recognise the name from the raw, in Kurdish letters.
+         */
+        val NAMES: Glossary = Glossary(
+            buildMap {
+                // Titles and system labels
+                put("shadow slave", "شادۆ سلەیڤ")
+                put("temple slave", "کۆیلەی پەرستگا")
+                put("aspect", "ئەسپێکت")
+                put("aspects", "ئەسپێکتەکان")
+                put("aspect description", "وەسفی ئەسپێکت")
+                put("no notable skills or abilities", "هیچ شارەزایی یان توانایییەکی دیار نییە")
+                // Recurring nouns in this genre, where a literal translation reads oddly
+                put("spell", "سیحر")
+                put("challenge", "تەحەدا")
+                put("attribute", "تایبەتمەندی")
+                put("rank", "پلە")
+                put("status window", "پەنجەرەی دۆخ")
+                put("level up", "ئاست بەرزبوونەوە")
+                put("dungeon", "زیندان")
+                put("gate", "دەروازە")
+                put("guild", "گیلد")
+                put("skill", "شارەزایی")
+                put("stat", "ئامار")
+            }
+        )
 
         /**
          * Sorani for the lines that appear in almost every chapter, written as a Kurmanji-

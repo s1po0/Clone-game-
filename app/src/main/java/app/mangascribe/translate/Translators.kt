@@ -312,8 +312,28 @@ object ChatPrompt {
         else -> "${language.displayName} (${language.nativeName})"
     }
 
+    /**
+     * Rules that make a model's Kurdish read like a translator's, not like a dictionary.
+     *
+     * Each line is here because a real page showed the failure: names transliterated differently
+     * per request, English left in the bubble, "Aspect: Temple Slave" turned into a sentence,
+     * and formal Arabic-flavoured Sorani in a scene where a character is shouting.
+     */
+    private const val STYLE = """
+Style rules:
+- Translate the whole line, every time. Never copy the source language into the answer, never
+  leave English words unless they are a proper name or a number.
+- Transliterate names and titles consistently (same spelling on every line); do not translate
+  people's names into their meaning.
+- Keep system labels and status text as labels ("Aspect: Temple Slave" stays a label, not a
+  sentence).
+- Match the register: shouting is short and sharp, narration is full sentences.
+- If the line is already in the target language, return it unchanged.
+"""
+
     fun build(source: String, target: String, lines: List<String>): String = buildString {
         append("Translate from ").append(source).append(" to ").append(target).append(".\n")
+        append(STYLE)
         append("Reply with the same numbers, one translation per line, nothing else.\n\n")
         lines.forEachIndexed { i, line ->
             append(i + 1).append(". ").append(line.replace("\n", " ")).append('\n')
@@ -426,10 +446,26 @@ class TranslationPipeline(
         }
         var lastError: Throwable? = null
         val tried = mutableListOf<String>()
+        val targetIsRtl = Languages.of(targetLanguage).rtl
+        var best: TranslationBatch? = null
         for (engine in capable) {
             tried += engine.displayName
             try {
                 val result = engine.translate(texts, sourceLanguage, targetLanguage)
+                // An engine that echoes the source ("Worthless." came back as "WORTHLESS.") has
+                // not translated: try the next engine before accepting it. The renderer also
+                // refuses to draw such a line, but a retry is where a real translation can
+                // still come from.
+                if (app.mangascribe.core.TranslatedTextCleanup.hasLatinResidue(
+                        result.lines.joinToString(" "), targetIsRtl,
+                    )
+                ) {
+                    best = best ?: result
+                    lastError = TranslationException(
+                        "${engine.displayName} returned the source text unchanged",
+                    )
+                    continue
+                }
                 if (result.lines.any { it.isNotBlank() }) {
                     return result.copy(detectedSource = Languages.detect(texts.joinToString(" ")))
                 }
@@ -437,6 +473,9 @@ class TranslationPipeline(
                 lastError = t
             }
         }
+        // Every engine echoed the source: give the renderer what came back (it will keep the
+        // original lettering visible) rather than failing the whole page.
+        best?.let { if (it.lines.any { line -> line.isNotBlank() }) return it.copy(detectedSource = Languages.detect(texts.joinToString(" "))) }
         val why = lastError?.message?.takeIf { it.isNotBlank() }
             ?: UnsupportedPairException(sourceLanguage, targetLanguage, tried).message.orEmpty()
         throw TranslationException(why, lastError)
