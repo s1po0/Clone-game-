@@ -42,12 +42,13 @@ class MicrosoftTranslateTranslator(
         // `to=ku` returned `سڵاو` for "hello". This is the opposite of Google, where `ckb` is
         // Sorani and `ku` is Kurmanji, and getting it wrong is a whole page of untranslated text.
         "ckb" -> "ku"
-        // Kurmanji is the other direction: Microsoft's `ku` is already taken, and it has no
-        // separate Northern Kurdish code on this endpoint, so it is left to Google.
+        // Kurmanji is the other direction: Microsoft's `ku` is already taken by Central Kurdish,
+        // and this endpoint has no separate Northern Kurdish code, so it is left to Google.
         "ku" -> null
-        "zh-Hans" -> "zh-Hans"
-        "zh-Hant" -> "zh-Hant"
-        else -> null
+        // **Everything else keeps its own ISO code.** Returning null here was the bug that kept
+        // Microsoft silent: a null source became "auto" and then a refused request, so the engine
+        // always failed with HTTP 400 even after the target code was right.
+        else -> language.code
     }
 
     override suspend fun translate(
@@ -70,13 +71,15 @@ class MicrosoftTranslateTranslator(
         val indices = texts.indices.filter { texts[it].isNotBlank() }
         if (indices.isEmpty()) return TranslationBatch(texts, id)
         val payload = indices.joinToString(",", "[", "]") { texts[it].trim().let(::jsonString) }
+        // `from` omitted (not "auto") is how this endpoint is asked to detect the language; the
+        // literal string "auto" is rejected.
+        val fromParam = if (sl == "auto") "" else "&from=$sl"
         val result = runCatching {
             gate.withPermit {
                 delay(PLEASANT_DELAY_MS)
                 http.postJson(
                     "https://edge.microsoft.com/translate/translatetext" +
-                        "?from=${if (sl == "auto") "auto-detect" else sl}&to=$tl" +
-                        "&isEnterpriseClient=false",
+                        "?to=$tl&isEnterpriseClient=false$fromParam",
                     payload,
                     headers = mapOf(
                         "Content-Type" to "application/json",

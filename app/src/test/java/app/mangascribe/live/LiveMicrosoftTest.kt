@@ -6,6 +6,7 @@ import app.mangascribe.translate.MicrosoftTranslateTranslator
 import app.mangascribe.translate.OkHttpHttp
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 
@@ -53,7 +54,23 @@ class LiveMicrosoftTest {
         val result = runCatching { runBlocking { engine.translate(page, "en", "ckb") } }
         println("LIVE microsoft: ${result.getOrNull()?.lines ?: result.exceptionOrNull()?.message}")
         if (result.isSuccess) {
-            assertEquals(2, result.getOrThrow().lines.size)
+            val lines = result.getOrThrow().lines
+            assertEquals(2, lines.size)
+            assertTrue(
+                "not Kurdish: $lines",
+                lines.all { line -> line.any { it in '\u0600'..'\u06FF' } },
+            )
         }
+    }
+
+    @Test
+    fun `an unknown source is detected instead of refused`() {
+        assumeTrue(live)
+        val engine = MicrosoftTranslateTranslator(OkHttpHttp())
+        // The reader's page is always sent as `auto` at least once; this endpoint wants the
+        // parameter *absent*, not the word "auto".
+        val result = runCatching { runBlocking { engine.translate(listOf("run!"), "auto", "ckb") } }
+        println("LIVE microsoft auto: ${result.getOrNull()?.lines ?: result.exceptionOrNull()?.message}")
+        assertTrue(result.isSuccess)
     }
 }
