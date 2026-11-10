@@ -68,6 +68,7 @@ jobs:
       - name: Stamp version
         run: |
           sed -i "s/^        versionCode = .*/        versionCode = ${GITHUB_RUN_NUMBER}/" app/build.gradle.kts
+          echo "MANGASCRIBE_VERSION_NAME=1.0.${GITHUB_RUN_NUMBER}" >> "$GITHUB_ENV"
           grep -n "versionCode" app/build.gradle.kts
 
       - name: Unit tests

@@ -60,11 +60,18 @@ android {
         applicationId = "app.mangascribe"
         minSdk = 26
         targetSdk = 35
+        // versionName is what Android's own "App info" screen shows, and the user reads that
+        // screen (not ours) to answer "did the update install?". It used to be a fixed 1.0.0-debug
+        // which was identical for every build, so the answer was unreadable. The workflow stamps
+        // `MANGASCRIBE_VERSION_NAME`; the fallback keeps local builds sane.
+        // 1.0.<run number> — the same number the release page uses, so the two screens agree.
+        val stampedName = System.getenv("MANGASCRIBE_VERSION_NAME")?.takeIf { it.isNotBlank() }
+            ?: "1.0.1-hardened"
         // Bumped per release: Android only accepts an update whose versionCode is higher.
         // CI overwrites this from the run number so every published APK can install over the
         // last one without the user uninstalling anything.
         versionCode = 1
-        versionName = "1.0.0"
+        versionName = stampedName
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
     }
@@ -124,6 +131,8 @@ android {
         // sideloaded install and a Play install are the same app; without the secrets they fall
         // back to the project key and still update each other.
         getByName("debug") {
+            // "1.0.66-debug" on Android's App info screen: the build number is in the name, so
+            // "did the update install?" is answerable without opening the app.
             versionNameSuffix = "-debug"
             signingConfig = when {
                 useUploadKey -> signingConfigs.getByName("upload")
