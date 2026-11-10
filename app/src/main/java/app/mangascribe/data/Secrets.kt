@@ -20,19 +20,14 @@ data class Secrets(
 
     /** A masked form for logs and diagnostics: never the value itself. */
     fun describe(): String = buildString {
-        fun one(name: String, value: String) {
-            append(name).append('=')
-            append(when {
-                value.isBlank() -> "unset"
-                value.length <= 4 -> "set(").append(value.length).append(" chars)"
-                else -> "set(").append(value.length).append(" chars, …")
-                    .append(value.takeLast(4)).append(')')
-            })
-            append(' ')
+        fun masked(value: String): String = when {
+            value.isBlank() -> "unset"
+            value.length <= 4 -> "set(${value.length} chars)"
+            else -> "set(${value.length} chars, …${value.takeLast(4)})"
         }
-        one("model", llmApiKey)
-        one("libre", libreApiKey)
-        one("mymemory", myMemoryEmail)
+        append("model=").append(masked(llmApiKey)).append(' ')
+        append("libre=").append(masked(libreApiKey)).append(' ')
+        append("mymemory=").append(masked(myMemoryEmail))
     }.trim()
 
     companion object {
