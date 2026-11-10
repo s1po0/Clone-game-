@@ -5,7 +5,7 @@
     LIVE lingva: HTTP 400: {
     LIVE dj=1: {"sentences":[{"trans":"سڵاو","orig":"hello","backend":10}],"src":"en","confidence":1.0,"spell":{},"ld_result":{"srclangs":["en"],"srclangs_confidences":[1.0],"extended_srclangs":["en"]}}
     LIVE page: [تۆ کێی؟, ئەمە چیە؟, ڕاکردن!]
-    LIVE microsoft: Microsoft Translator did not answer (HTTP 404: )
+    LIVE microsoft: Microsoft Translator did not answer (HTTP 400: )
     RAW-en (engine answered):
        EN  | THEY SAY THE SPELL VALUES BALANCE AS MUCH AS CHA
        KU  | دەڵێن بەهاکانی سپێڵ بەقەد تەحەدا هاوسەنگ دەبن.
@@ -24,14 +24,14 @@
        FIN | وەسفکردنی لایەن: کۆیلە بەدبەختێکی بێسوودە و هیچ لێهاتوویی و توانایەکی بەرچاوی نییە. کۆیلەیەکی پەرستگا زۆر دەگمەنترە، بەڵام بە هەمان شێوە بێ بەهایە.
            | transliterated=false leftover=false
        EN  | WHAT?! WHAT THE ACTUAL FUCK IS THIS?!
-       KU  | چی؟! ئەمە چ گێلییە ڕاستەقینەکە؟!
-       FIN | چی؟! ئەمە چ گێلییە ڕاستەقینەکە؟!
+       KU  | چی؟! ئەمە چی گێلییە ڕاستەقینەکە؟!
+       FIN | چی؟! ئەمە چی گێلییە ڕاستەقینەکە؟!
            | transliterated=false leftover=false
        EN  | "THERE ARE NO USELESS ASPECTS," HUH?
        KU  | "هیچ لایەنێکی بێسوود نییە"، ها؟
        FIN | "هیچ لایەنێکی بێسوود نییە"، ها؟
            | transliterated=false leftover=false
     RAW-auto (engine answered):
-BUILD SUCCESSFUL in 1m 6s
+BUILD SUCCESSFUL in 49s
 
 == compile status ==
