@@ -13,7 +13,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material3.Card
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -241,6 +244,76 @@ fun SettingsScreen(viewModel: LibraryViewModel) {
         Spacer(Modifier.height(24.dp))
     }
 }
+
+@Composable
+private fun Section(title: String, content: @Composable () -> Unit) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text(title, style = MaterialTheme.typography.titleMedium)
+            Divider()
+            content()
+        }
+    }
+}
+
+@Composable
+private fun ToggleRow(title: String, subtitle: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(
+        Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.bodyLarge)
+            Text(
+                subtitle,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Switch(checked = checked, onCheckedChange = onChange)
+    }
+}
+
+@Composable
+private fun SliderRow(label: String, value: Float, range: ClosedFloatingPointRange<Float>, onChange: (Float) -> Unit) {
+    Column {
+        Text("$label · ${"%.2f".format(value)}×", style = MaterialTheme.typography.bodyLarge)
+        Slider(value = value, onValueChange = onChange, valueRange = range)
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun LanguagePicker(
+    label: String,
+    selected: String,
+    onSelected: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var open by remember { mutableStateOf(false) }
+    val language = app.mangascribe.core.Languages.of(selected)
+    Column(modifier) {
+        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        AssistChip(
+            onClick = { open = true },
+            label = { Text(language.nativeName) },
+        )
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            viewModelLanguages().forEach { lang ->
+                DropdownMenuItem(
+                    text = { Text("${lang.nativeName} — ${lang.displayName}") },
+                    onClick = { open = false; onSelected(lang.code) },
+                )
+            }
+        }
+    }
+}
+
+private fun viewModelLanguages(): List<Language> = app.mangascribe.core.Languages.all
 
 /**
  * The Kurdish question, answered honestly. Sorani is the language this app was asked for, and
