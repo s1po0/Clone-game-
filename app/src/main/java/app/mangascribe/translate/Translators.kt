@@ -479,7 +479,14 @@ class TranslationPipeline(
                 // not translated: try the next engine before accepting it. The renderer also
                 // refuses to draw such a line, but a retry is where a real translation can
                 // still come from.
-                if (app.mangascribe.core.TranslatedTextCleanup.hasLatinResidue(
+                // For an RTL target the bar is absolute: an engine that leaves any Latin letter
+                // in the answer has not finished the job, and the next engine is asked before the
+                // result is accepted. The old share-based test let "one English word in a Kurdish
+                // line" through, which is precisely what the reader kept seeing.
+                val unfinishedForRtl = targetIsRtl && result.lines.any { line ->
+                    app.mangascribe.core.KurdishTransliteration.hasLatinLetters(line)
+                }
+                if (unfinishedForRtl || app.mangascribe.core.TranslatedTextCleanup.hasLatinResidue(
                         result.lines.joinToString(" "), targetIsRtl,
                     )
                 ) {

@@ -346,10 +346,13 @@ class LibraryRepository(
         val glossary = Glossary.builtIn(target)
         // 1. Whole-line glossary (exact phrases, names, system labels).
         val afterWhole = texts.map { glossary.translationFor(it) }
-        // 2. Terms inside longer lines: rewrite, then translate only what is left.
-        val preWritten = texts.indices.map { i ->
-            afterWhole[i] ?: glossary.rewriteTermsInside(texts[i]).text
-        }
+        // 2. What is left goes to the engine **as written**.
+        //
+        // Pre-substituting Kurdish terms into an English line (an earlier idea) made the engine
+        // detect the source as Kurdish and answer in English — a handful of Kurdish words inside
+        // an English sentence is a strong script signal. The glossary is applied afterwards, on
+        // the answer, and the raw line is what gets translated.
+        val preWritten = texts.indices.map { i -> afterWhole[i] ?: texts[i] }
         val needEngine = texts.indices.filter { afterWhole[it] == null }
 
         var engineId = config.engineId
@@ -374,7 +377,10 @@ class LibraryRepository(
                     // text is stored — so the guarantee holds in the database too, not only on
                     // screen.
                     out[original] = if (Languages.of(target).rtl) {
-                        app.mangascribe.core.KurdishTransliteration.rescueMixed(value)
+                        // Glossary first (so a known term keeps one spelling), then the rescue for
+                        // anything the engine left in Latin.
+                        val withTerms = glossary.rewriteTermsInside(value).text
+                        app.mangascribe.core.KurdishTransliteration.rescueMixed(withTerms)
                     } else {
                         value
                     }

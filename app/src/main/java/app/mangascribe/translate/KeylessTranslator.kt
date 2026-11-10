@@ -2,7 +2,9 @@ package app.mangascribe.translate
 
 import app.mangascribe.core.EngineCodes
 import app.mangascribe.core.Language
-import app.mangascribe.core.Languages
+import app.mangascribe.core.TranslatedTextCleanup
+import app.mangascribe.core.Language
+import app.mangascribe.core.TranslatedTextCleanups
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
@@ -36,10 +38,32 @@ import kotlinx.coroutines.sync.withPermit
  *    cache makes that true across runs).
  *
  * No key, no account, no billing: every URL here is a public web endpoint that a browser calls.
+ *
+ * Arabic vs Sorani, and why they behave differently
+ * -------------------------------------------------
+ * Google has a *direct* model for every Arabic pair, so Arabic answers on the first endpoint. For
+ * Sorani there is no direct model on the free endpoints: `tl=ckb` on the plain `translate_a/single`
+ * route is the only one that actually produces Kurdish, and it does so best when it is treated
+ * gently. The working recipe — the one the user's own Kurd-man script uses, where Sorani "just
+ * works" — is:
+ *
+ *  - one request at a time (no parallel fan-out),
+ *  - a short pause between requests (0.35 s),
+ *  - the line sent raw (no pre-rewriting into odd shapes),
+ *  - the browser-like `client=gtx` endpoint first and last, other endpoints only as fallback.
+ *
+ * All three are implemented here ([maxConcurrent] defaults to 1, [PLEASANT_DELAY_MS],
+ * and the Sorani routes put `translate.googleapis.com` first). Parallel fan-out of eight lines on
+ * a rate-limited endpoint is exactly what produced "some lines came back in English".
  */
 class KeylessTranslateTranslator(
     private val http: Http,
-    private val maxConcurrent: Int = 3,
+    /**
+     * Requests in flight. **One.** A free endpoint answers eight parallel requests by translating
+     * the first two and echoing the rest, which looks like "Sorani is broken" but is a rate limit
+     * in disguise. Serial requests with a short pause are slower on paper and faster in practice.
+     */
+    private val maxConcurrent: Int = 1,
     private val lingvaInstances: List<String> = LINGVA_INSTANCES,
 ) : Translator {
 
@@ -121,10 +145,29 @@ class KeylessTranslateTranslator(
                 dead += route.host
                 continue
             }
-            val result = runCatching { gate.withPermit { requestWithRetry(route, line) } }
+            val result = runCatching {
+                gate.withPermit {
+                    // The pause is what keeps a free endpoint answering. It is paid once per
+                    // request, on one thread, and buys the whole page.
+                    delay(PLEASANT_DELAY_MS)
+                    requestWithRetry(route, line)
+                }
+            }
             val value = result.getOrNull()
             if (!value.isNullOrBlank()) {
                 HostHealth.succeeded(route.host)
+                // An endpoint can "succeed" by echoing the line back. For Sorani that is the
+                // difference between a Kurdish page and an English one: keep looking instead of
+                // accepting the first 200 OK.
+                if (tl == "ckb" || tl == "ku" || tl == "ku-Arab") {
+                    val looksTranslated = TranslatedTextCleanup.hasLeftoverSource(
+                        value, line, targetIsRtl = true,
+                    ).not() || !value.any { it in 'A'..'Z' || it in 'a'..'z' }
+                    if (!looksTranslated) {
+                        lastReason = "${route.name} echoed the line instead of translating it"
+                        continue
+                    }
+                }
                 return Attempt(value, dead = dead)
             }
             val error = result.exceptionOrNull()
@@ -142,8 +185,52 @@ class KeylessTranslateTranslator(
                 else -> lastReason = "${route.name}: ${error.message?.take(80)}"
             }
         }
+        // Last resort for Sorani: two hops through Arabic. Only reached when every direct endpoint
+        // has failed for this line, so it costs nothing on a healthy page.
+        if (tl == "ckb" || tl == "ku-Arab") {
+            val twoHop = runCatching { gate.withPermit { viaArabic(line, sl) } }.getOrNull()
+            if (!twoHop.isNullOrBlank() &&
+                !TranslatedTextCleanup.hasLeftoverSource(twoHop, line, targetIsRtl = true)
+            ) {
+                return Attempt(twoHop, dead = dead)
+            }
+        }
         return Attempt(null, lastReason, dead)
     }
+
+    /**
+     * A two-hop route for Sorani, used only when every direct endpoint has failed for a line.
+     *
+     * Google translates English→Arabic with its strongest model, and Arabic→Sorani is a pair the
+     * free endpoint answers reliably because both sides are Arabic script. Two hops through a
+     * language the engine is good at beats one hop into a language it half-supports. The meaning
+     * survives; that is the whole point of translating rather than transliterating.
+     */
+    private suspend fun viaArabic(line: String, sl: String): String? {
+        if (sl == "ar" || sl == "ckb" || sl == "ku" || sl == "ku-Arab") return null
+        val arabic = runCatching {
+            fetch(googleWeb("ar"), java.net.URLEncoder.encode(line, "UTF-8"))
+        }.getOrNull()?.takeIf { it.isNotBlank() } ?: return null
+        val sorani = runCatching {
+            fetch(googleWeb("ckb"), java.net.URLEncoder.encode(arabic, "UTF-8"))
+        }.getOrNull()?.takeIf { it.isNotBlank() } ?: return null
+        return sorani
+    }
+
+    private fun googleWeb(tl: String) = Route(
+        name = "Google web",
+        host = "translate.googleapis.com",
+        build = { q ->
+            "https://translate.googleapis.com/translate_a/single?client=gtx" +
+                "&sl=auto&tl=$tl&dt=t&ie=UTF-8&oe=UTF-8&q=$q"
+        },
+        headers = mapOf(
+            "User-Agent" to "Mozilla/5.0 (Linux; Android 14; SM-S918B) AppleWebKit/537.36 " +
+                "(KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36",
+            "Accept" to "application/json",
+        ),
+        parser = { body, _ -> GoogleResponseParser.parse(body) },
+    )
 
     private suspend fun requestWithRetry(route: Route, line: String): String? {
         var last: Throwable? = null
@@ -268,6 +355,13 @@ class KeylessTranslateTranslator(
 
         /** Hosts that failed at the transport level during this run. */
         private val deadHosts: MutableSet<String> = java.util.Collections.synchronizedSet(mutableSetOf())
+
+        /**
+         * Pause before every request. Free endpoints rate-limit per IP; Kurd-man sleeps 400 ms
+         * and reports that the same endpoints then "just work". 350 ms is the same idea, a little
+         * faster, and it is the single most effective setting in this file.
+         */
+        const val PLEASANT_DELAY_MS = 350L
 
         fun resetHosts() = deadHosts.clear()
     }
