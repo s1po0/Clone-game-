@@ -108,7 +108,7 @@ class Glossary private constructor(internal val phrases: Map<String, String>) {
         )
 
         /** Sentences and names together: a name is often a whole balloon ("ASPECT: TEMPLE SLAVE"). */
-        private val merged: Glossary = Glossary(KURDISH.phrases + NAMES.phrases)
+        private val merged: Glossary by lazy { Glossary(KURDISH.phrases + NAMES.phrases) }
 
         /**
          * Names and terms a translator mangles and a reader notices immediately.
