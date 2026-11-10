@@ -1,5 +1,11 @@
 # MangaScribe — key register
 
+> **The app is Google-only and needs no keys at all.** Microsoft, MyMemory, LibreTranslate,
+> Lingva and the OpenAI-compatible model endpoint were deleted from the source in build 79.
+> The one credential below still matters, and it is the *signing* key — the app's permanent
+> identity for in-place updates, not an API key.
+
+
 One page, so nothing about the app's identity lives only in a conversation.
 
 ## The upload key (the app's permanent identity)
