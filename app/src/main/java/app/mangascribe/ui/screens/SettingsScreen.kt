@@ -134,7 +134,7 @@ fun SettingsScreen(viewModel: LibraryViewModel) {
 
         Section("Translation engine") {
             EngineRow(settings) { id -> viewModel.updateSettings { it.copy(engineId = id) } }
-            KurdishCoverage(settings)
+            KurdishCoverage(settings, viewModel)
             Text(
                 "Free engines need no account. A model endpoint gives the best dialogue and " +
                     "keeps each balloon separate.",
@@ -278,7 +278,7 @@ private fun viewModelLanguages(): List<Language> = app.mangascribe.core.Language
  * user finds out from a failed translation.
  */
 @Composable
-private fun KurdishCoverage(settings: AppSettings) {
+private fun KurdishCoverage(settings: AppSettings, viewModel: LibraryViewModel) {
     val supported = app.mangascribe.translate.EngineCatalog.supports(
         app.mangascribe.core.EngineCodes.LLM,
         settings.sourceLanguage,

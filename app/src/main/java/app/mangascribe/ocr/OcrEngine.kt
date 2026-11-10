@@ -138,15 +138,18 @@ class MlKitOcrEngine(private val context: Context) : OcrEngine {
         val blocks = mutableListOf<TextBlock>()
         for (block in text.textBlocks) {
             for (line in block.lines) {
-                val points = line.cornerPoints?.map { PointF(it.x.toFloat(), it.y.toFloat()) }
-                val polygon = points ?: run {
-                    val b = line.boundingBox ?: continue
-                    listOf(
-                        PointF(b.left.toFloat(), b.top.toFloat()),
-                        PointF(b.right.toFloat(), b.top.toFloat()),
-                        PointF(b.right.toFloat(), b.bottom.toFloat()),
-                        PointF(b.left.toFloat(), b.bottom.toFloat()),
+                val corners = line.cornerPoints
+                val box = line.boundingBox
+                val polygon = when {
+                    corners != null && corners.isNotEmpty() ->
+                        corners.map { PointF(it.x.toFloat(), it.y.toFloat()) }
+                    box != null -> listOf(
+                        PointF(box.left.toFloat(), box.top.toFloat()),
+                        PointF(box.right.toFloat(), box.top.toFloat()),
+                        PointF(box.right.toFloat(), box.bottom.toFloat()),
+                        PointF(box.left.toFloat(), box.bottom.toFloat()),
                     )
+                    else -> continue // a line with neither corners nor a box cannot be drawn
                 }
                 val angle = Geometry.angleOf(polygon)
                 blocks += TextBlock(

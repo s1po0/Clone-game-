@@ -105,7 +105,7 @@ class SettingsStore(private val context: Context) {
             prefs[Keys.direction] = updated.readerDirection
             prefs[Keys.myMemoryEmail] = updated.myMemoryEmail
             prefs[Keys.libreEndpoint] = updated.libreEndpoint
-            prefs[Keys.libreApiKey] = updated.libreApiKey
+            prefs[Keys.libreKey] = updated.libreApiKey
             prefs[Keys.llmBase] = updated.llmBaseUrl
             prefs[Keys.llmKey] = updated.llmApiKey
             prefs[Keys.llmModel] = updated.llmModel

@@ -267,8 +267,8 @@ class OpenAiCompatibleTranslator(
         val out = texts.toMutableList()
         for (batch in batches) {
             val request = ChatPrompt.build(
-                sourceName = ChatPrompt.languageInstruction(src),
-                targetName = ChatPrompt.languageInstruction(tgt),
+                source = ChatPrompt.languageInstruction(src),
+                target = ChatPrompt.languageInstruction(tgt),
                 lines = batch.map { texts[it] },
             )
             val payload = JSONObject().apply {
@@ -431,10 +431,9 @@ class TranslationPipeline(
                 lastError = t
             }
         }
-        throw TranslationException(
-            lastError?.message ?: UnsupportedPairException(sourceLanguage, targetLanguage, tried).message,
-            lastError,
-        )
+        val why = lastError?.message?.takeIf { it.isNotBlank() }
+            ?: UnsupportedPairException(sourceLanguage, targetLanguage, tried).message.orEmpty()
+        throw TranslationException(why, lastError)
     }
 
     fun engineNames(): List<String> = engines.map { it.displayName }

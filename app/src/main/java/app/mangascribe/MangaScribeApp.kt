@@ -12,6 +12,7 @@ import app.mangascribe.translate.OkHttpHttp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /**
@@ -54,7 +55,7 @@ class MangaScribeApp : Application() {
      */
     private suspend fun ensureDemoContent() {
         runCatching {
-            val hasAny = kotlinx.coroutines.flow.first(graph.repository.books()).isNotEmpty()
+            val hasAny = graph.repository.books().first().isNotEmpty()
             if (hasAny) return@runCatching
             val file = app.mangascribe.util.DemoPage.writeSamplePage(this)
             graph.repository.importFiles(

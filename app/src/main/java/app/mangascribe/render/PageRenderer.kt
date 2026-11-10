@@ -53,8 +53,8 @@ class PageRenderer {
         val height = page?.height ?: 1600
         val scale = min(1f, maxDimension.toFloat() / max(width, height))
         val out = Bitmap.createBitmap(
-            (width * scale).coerceAtLeast(1),
-            (height * scale).coerceAtLeast(1),
+            (width * scale).toInt().coerceAtLeast(1),
+            (height * scale).toInt().coerceAtLeast(1),
             Bitmap.Config.ARGB_8888,
         )
         val canvas = Canvas(out)
