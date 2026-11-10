@@ -1,8 +1,8 @@
 == live endpoint test ==
     LIVE google: سڵاو
     LIVE echo-check: [ئەمە چییە بە گێلی ڕاستەقینە؟!]
-    LIVE clients5: [""]
-LiveEndpointTest > google dictionary and lingva routes are probed so a dead one is known FAILED
+    LIVE clients5: ["سڵاو"]
+    LIVE lingva: HTTP 400: {
     LIVE page: [تۆ کێی؟, ئەمە چیە؟, ڕاکردن!]
     RAW-en (engine answered):
        EN  | THEY SAY THE SPELL VALUES BALANCE AS MUCH AS CHA
@@ -30,9 +30,6 @@ LiveEndpointTest > google dictionary and lingva routes are probed so a dead one 
        FIN | "هیچ لایەنێکی بێسوود نییە"، ها؟
            | transliterated=false leftover=false
     RAW-auto (engine answered):
-> Task :app:testDebugUnitTest FAILED
-7 tests completed, 1 failed
-BUILD FAILED in 50s
+BUILD SUCCESSFUL in 1m 2s
 
 == compile status ==
-BUILD FAILED in 50s
