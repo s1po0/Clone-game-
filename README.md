@@ -176,6 +176,15 @@ Other apps cannot read the file (private storage), root-only tools on a rooted p
 that point no app-level protection helps, which is why the app also keeps the key's scope
 narrow: one endpoint, and nothing else.
 
+## Free engines (no key)
+
+The default engine needs no key and no account. It rotates through four public endpoints —
+Google's web endpoint, the Chrome dictionary endpoint (`clients5.google.com`), Lingva mirrors, and
+Google's mobile path — so a rate-limited endpoint costs one request and moves on, instead of
+failing the chapter. A host that is rate-limited is parked for a minute; a host that is
+unreachable is skipped for the rest of the run; every finished line is kept locally and never sent
+twice. Source: `app/src/main/java/app/mangascribe/translate/KeylessTranslator.kt`.
+
 ## Reading quality
 
 Long webtoon strips are drawn at their true height (they used to be clipped into a fixed row),
