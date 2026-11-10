@@ -30,8 +30,6 @@
        FIN | "هیچ لایەنێکی بێسوود نییە"، ها؟
            | transliterated=false leftover=false
     RAW-auto (engine answered):
-BUILD SUCCESSFUL in 54s
+BUILD SUCCESSFUL in 1m 4s
 
 == compile status ==
-e: The daemon has terminated unexpectedly on startup attempt #1 with error code: 0. The daemon process output:
-e: The daemon has terminated unexpectedly on startup attempt #2 with error code: 0. The daemon process output:
